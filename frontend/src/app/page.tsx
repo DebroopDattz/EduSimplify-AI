@@ -373,7 +373,6 @@ export default function LandingPage() {
                 {[
                   "No credit card required",
                   "Free forever plan",
-                  "5,000+ students trust us",
                 ].map((text) => (
                   <span key={text} className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-ibm-500 flex-shrink-0" />
@@ -588,8 +587,7 @@ export default function LandingPage() {
                 custom={2}
                 className="text-muted-foreground text-lg mb-8 leading-relaxed"
               >
-                Join over 5,000 students already using EduSimplify AI to study
-                more effectively. It&apos;s free to start.
+                Start studying smarter and more effectively with EduSimplify AI. It&apos;s free to start.
               </motion.p>
               <motion.div
                 variants={fadeUp}
