@@ -1,0 +1,1 @@
+# EduSimplify AI – middleware package

@@ -1,0 +1,3 @@
+# This file ensures Git tracks the logs directory.
+# Application log files are written here by loguru.
+# All *.log files are git-ignored.

@@ -1,0 +1,278 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Variables (ShadCN compatible) ─────────────────────────── */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 224 71.4% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71.4% 4.1%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 221 83% 53%;
+    --radius: 0.75rem;
+
+    /* IBM brand */
+    --ibm-blue: #0f62fe;
+    --ibm-purple: #8a3ffc;
+    --ibm-cyan: #0072c3;
+  }
+
+  .dark {
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 40% 98%;
+    --card: 224 71.4% 6%;
+    --card-foreground: 210 40% 98%;
+    --popover: 224 71.4% 6%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 217 91% 60%;
+  }
+}
+
+/* ── Base reset ─────────────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  ::selection {
+    background-color: rgba(15, 98, 254, 0.2);
+    color: inherit;
+  }
+}
+
+/* ── Utility Classes ────────────────────────────────────────────── */
+@layer utilities {
+  /* Glassmorphism */
+  .glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+  .glass-card {
+    @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/30 dark:border-slate-700/50;
+  }
+  .glass-dark {
+    @apply bg-black/20 backdrop-blur-lg border border-white/10;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-ibm bg-clip-text text-transparent;
+  }
+  .gradient-text-cool {
+    background: linear-gradient(135deg, #33b1ff 0%, #0072c3 60%, #8a3ffc 100%);
+    @apply bg-clip-text text-transparent;
+  }
+  .gradient-text-cyan {
+    background: linear-gradient(135deg, #33b1ff 0%, #8a3ffc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gradient-text-warm {
+    background: linear-gradient(135deg, #ff7eb6 0%, #ff832b 100%);
+    @apply bg-clip-text text-transparent;
+  }
+
+  /* Shimmer animation */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted) / 0.7) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+
+  /* Hero background orbs */
+  .hero-orb-1 {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(15,98,254,0.12) 0%, transparent 70%);
+    top: -200px;
+    right: -100px;
+    pointer-events: none;
+  }
+  .hero-orb-2 {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(138,63,252,0.1) 0%, transparent 70%);
+    bottom: -100px;
+    left: -100px;
+    pointer-events: none;
+  }
+
+  /* Card hover lift */
+  .card-hover {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
+  }
+  .card-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
+  }
+
+  /* Gradient backgrounds */
+  .gradient-bg {
+    background: linear-gradient(135deg, #0f62fe 0%, #8a3ffc 100%);
+  }
+  .gradient-bg-subtle {
+    background: linear-gradient(135deg, rgba(15,98,254,0.04) 0%, rgba(138,63,252,0.03) 100%);
+  }
+  .dark .gradient-bg-subtle {
+    background: linear-gradient(135deg, rgba(15,98,254,0.07) 0%, rgba(138,63,252,0.05) 100%);
+  }
+
+  /* Hero orbs (named variants) */
+  .hero-orb {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(60px);
+  }
+  .hero-orb-blue {
+    width: 500px;
+    height: 500px;
+    background: rgba(15,98,254,0.15);
+  }
+  .hero-orb-purple {
+    width: 400px;
+    height: 400px;
+    background: rgba(138,63,252,0.12);
+  }
+  .hero-orb-cyan {
+    width: 350px;
+    height: 350px;
+    background: rgba(0,114,195,0.1);
+  }
+
+  /* Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+}
+
+/* ── Markdown / Prose overrides ─────────────────────────────────── */
+.prose-edusimplify {
+  @apply text-foreground;
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-foreground font-semibold;
+  }
+  h1 { @apply text-2xl mt-6 mb-3; }
+  h2 { @apply text-xl mt-5 mb-2; }
+  h3 { @apply text-lg mt-4 mb-2; }
+
+  p { @apply my-2 leading-relaxed; }
+
+  ul, ol { @apply my-2 pl-5; }
+  li { @apply my-1; }
+
+  code {
+    @apply text-sm font-mono bg-muted px-1.5 py-0.5 rounded text-foreground;
+  }
+
+  pre {
+    @apply bg-slate-900 dark:bg-slate-800 rounded-xl p-4 overflow-x-auto my-4;
+  }
+  pre code {
+    @apply bg-transparent p-0 text-sm;
+  }
+
+  blockquote {
+    @apply border-l-4 border-ibm-400 pl-4 my-4 text-muted-foreground italic;
+  }
+
+  table {
+    @apply w-full border-collapse my-4 text-sm;
+  }
+  th {
+    @apply bg-muted text-muted-foreground font-medium text-left p-2 border border-border;
+  }
+  td {
+    @apply p-2 border border-border;
+  }
+
+  a {
+    @apply text-ibm-500 hover:text-ibm-600 underline underline-offset-2;
+  }
+
+  strong { @apply font-semibold text-foreground; }
+  em { @apply italic; }
+}
+
+/* ── KaTeX / Math ────────────────────────────────────────────────── */
+.katex-display {
+  @apply overflow-x-auto py-2;
+}
+
+/* ── Highlight.js dark theme override ───────────────────────────── */
+.dark .hljs {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+/* ── Print styles ────────────────────────────────────────────────── */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    @apply text-black bg-white;
+  }
+}
+
+/* ── Mermaid diagrams ────────────────────────────────────────────── */
+.mermaid-container {
+  @apply flex justify-center items-center p-4 bg-muted/50 rounded-xl my-4 overflow-x-auto;
+}
+.mermaid-container svg {
+  max-width: 100%;
+  height: auto;
+}

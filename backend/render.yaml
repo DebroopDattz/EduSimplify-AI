@@ -1,0 +1,98 @@
+services:
+  - type: web
+    name: edusimplify-backend
+    env: python
+    region: oregon
+    plan: starter
+    branch: main
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Application
+      - key: APP_ENV
+        value: production
+      - key: APP_SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://edusimplify.vercel.app,https://www.edusimplify.ai
+
+      # IBM watsonx.ai
+      - key: IBM_WATSONX_API_KEY
+        sync: false
+      - key: IBM_WATSONX_PROJECT_ID
+        sync: false
+      - key: IBM_WATSONX_URL
+        value: https://us-south.ml.cloud.ibm.com
+      - key: IBM_WATSONX_MODEL_ID
+        value: ibm/granite-13b-chat-v2
+      - key: IBM_WATSONX_EMBED_MODEL_ID
+        value: ibm/slate-30m-english-rtrvr
+
+      # IBM Cloud Object Storage
+      - key: IBM_COS_API_KEY
+        sync: false
+      - key: IBM_COS_INSTANCE_CRN
+        sync: false
+      - key: IBM_COS_ENDPOINT
+        value: https://s3.us-south.cloud-object-storage.appdomain.cloud
+      - key: IBM_COS_BUCKET_NAME
+        value: edusimplify-documents
+
+      # IBM Cloudant
+      - key: IBM_CLOUDANT_URL
+        sync: false
+      - key: IBM_CLOUDANT_API_KEY
+        sync: false
+      - key: IBM_CLOUDANT_DB_NAME
+        value: edusimplify-sessions
+
+      # IBM App ID
+      - key: IBM_APPID_TENANT_ID
+        sync: false
+      - key: IBM_APPID_CLIENT_ID
+        sync: false
+      - key: IBM_APPID_CLIENT_SECRET
+        sync: false
+      - key: IBM_APPID_OAUTH_SERVER_URL
+        sync: false
+
+      # Redis (Upstash or Render Redis)
+      - key: REDIS_URL
+        sync: false
+
+      # ChromaDB
+      - key: CHROMA_PERSIST_DIRECTORY
+        value: /opt/render/project/src/chroma_db
+      - key: CHROMA_COLLECTION_NAME
+        value: edusimplify_docs
+
+      # Document processing
+      - key: MAX_UPLOAD_SIZE_MB
+        value: "50"
+      - key: CHUNK_SIZE
+        value: "1000"
+      - key: CHUNK_OVERLAP
+        value: "200"
+      - key: MAX_CONTEXT_CHUNKS
+        value: "5"
+
+      # JWT
+      - key: JWT_ALGORITHM
+        value: RS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+
+      # Logging
+      - key: LOG_LEVEL
+        value: INFO
+      - key: SENTRY_DSN
+        sync: false
+
+  - type: redis
+    name: edusimplify-redis
+    plan: starter
+    region: oregon
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []

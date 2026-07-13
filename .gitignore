@@ -1,0 +1,30 @@
+﻿# Build outputs & dependencies — never commit these
+frontend/node_modules/
+frontend/.next/
+backend/venv/
+backend/__pycache__/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Local env files
+.env
+.env.local
+.env.production
+frontend/.env.local
+frontend/.env.production
+backend/.env
+
+# ChromaDB & logs (runtime data)
+backend/chroma_db/*
+!backend/chroma_db/.gitkeep
+backend/logs/*
+!backend/logs/.gitkeep
+backend/tmp_uploads/
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

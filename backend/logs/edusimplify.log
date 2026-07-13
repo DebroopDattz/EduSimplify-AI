@@ -1,0 +1,93 @@
+2026-07-13 21:04:17.251 | INFO     | main:create_app:152 - All routers mounted successfully.
+2026-07-13 21:04:17.253 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-13 21:04:17.254 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-13 21:04:21.965 | INFO     | app.services.cos_service:__init__:43 - COSService initialised – endpoint=https://s3.us-south.cloud-object-storage.appdomain.cloud, bucket=edusimplify-documents.
+2026-07-13 21:04:22.347 | INFO     | app.services.cloudant_service:__init__:43 - CloudantService initialised – URL: https://your-account.cloudantnosqldb.appdomain.cloud.
+2026-07-13 21:04:23.972 | ERROR    | app.services.watsonx_service:_init_client:80 - Failed to initialise watsonx.ai client: Attempt of authenticating connection to service failed, please validate your credentials. Error: {"errorCode":"BXNIM0415E","errorMessage":"Provided API key could not be found.","context":{"requestId":"d3hsNnM-96ad03c33fa64de984a053da1c399e25","requestType":"incoming.Identity_Token","userAgent":"python-httpx/0.28.1","url":"https://iam.cloud.ibm.com","startTime":"13.07.2026 15:34:23:879 UTC","endTime":"13.07.2026 15:34:23:925 UTC","elapsedTime":"46","locale":"en_US","clusterName":"iam-id-prod-eu-de-fra04"}}
+2026-07-13 21:04:23.973 | ERROR    | main:lifespan:72 - Service initialisation failed: watsonx.ai client init failed: Attempt of authenticating connection to service failed, please validate your credentials. Error: {"errorCode":"BXNIM0415E","errorMessage":"Provided API key could not be found.","context":{"requestId":"d3hsNnM-96ad03c33fa64de984a053da1c399e25","requestType":"incoming.Identity_Token","userAgent":"python-httpx/0.28.1","url":"https://iam.cloud.ibm.com","startTime":"13.07.2026 15:34:23:879 UTC","endTime":"13.07.2026 15:34:23:925 UTC","elapsedTime":"46","locale":"en_US","clusterName":"iam-id-prod-eu-de-fra04"}}
+2026-07-13 21:04:23.978 | DEBUG    | main:lifespan:73 - Traceback (most recent call last):
+  File "C:\Users\Debroop Datta\Desktop\IBM BOB\EduSimplify\backend\app\services\watsonx_service.py", line 76, in _init_client
+    client = APIClient(credentials)
+  File "C:\Users\Debroop Datta\Desktop\IBM BOB\EduSimplify\backend\venv\Lib\site-packages\ibm_watsonx_ai\client.py", line 498, in __init__
+    self._auth_method.get_token()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Debroop Datta\Desktop\IBM BOB\EduSimplify\backend\venv\Lib\site-packages\ibm_watsonx_ai\utils\auth\base_auth.py", line 108, in get_token
+    self._save_token_data(self._generate_token())
+                          ~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Debroop Datta\Desktop\IBM BOB\EduSimplify\backend\venv\Lib\site-packages\ibm_watsonx_ai\utils\auth\iam_auth.py", line 92, in _generate_token
+    return self._handle_token_response(response)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Debroop Datta\Desktop\IBM BOB\EduSimplify\backend\venv\Lib\site-packages\ibm_watsonx_ai\utils\auth\iam_auth.py", line 76, in _handle_token_response
+    raise InvalidCredentialsError(reason=response.text)
+ibm_watsonx_ai.wml_client_error.InvalidCredentialsError: Attempt of authenticating connection to service failed, please validate your credentials. Error: {"errorCode":"BXNIM0415E","errorMessage":"Provided API key could not be found.","context":{"requestId":"d3hsNnM-96ad03c33fa64de984a053da1c399e25","requestType":"incoming.Identity_Token","userAgent":"python-httpx/0.28.1","url":"https://iam.cloud.ibm.com","startTime":"13.07.2026 15:34:23:879 UTC","endTime":"13.07.2026 15:34:23:925 UTC","elapsedTime":"46","locale":"en_US","clusterName":"iam-id-prod-eu-de-fra04"}}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Debroop Datta\Desktop\IBM BOB\EduSimplify\backend\main.py", line 68, in lifespan
+    app.state.watsonx = WatsonxService()
+                        ~~~~~~~~~~~~~~^^
+  File "C:\Users\Debroop Datta\Desktop\IBM BOB\EduSimplify\backend\app\services\watsonx_service.py", line 60, in __init__
+    self._client = self._init_client(settings)
+                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Debroop Datta\Desktop\IBM BOB\EduSimplify\backend\app\services\watsonx_service.py", line 81, in _init_client
+    raise RuntimeError(f"watsonx.ai client init failed: {exc}") from exc
+RuntimeError: watsonx.ai client init failed: Attempt of authenticating connection to service failed, please validate your credentials. Error: {"errorCode":"BXNIM0415E","errorMessage":"Provided API key could not be found.","context":{"requestId":"d3hsNnM-96ad03c33fa64de984a053da1c399e25","requestType":"incoming.Identity_Token","userAgent":"python-httpx/0.28.1","url":"https://iam.cloud.ibm.com","startTime":"13.07.2026 15:34:23:879 UTC","endTime":"13.07.2026 15:34:23:925 UTC","elapsedTime":"46","locale":"en_US","clusterName":"iam-id-prod-eu-de-fra04"}}
+
+2026-07-13 21:05:52.048 | INFO     | main:create_app:148 - All routers mounted successfully.
+2026-07-13 21:05:52.051 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-13 21:05:52.051 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-13 21:06:11.386 | INFO     | main:create_app:148 - All routers mounted successfully.
+2026-07-13 21:06:11.407 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-13 21:06:11.408 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-13 21:07:17.753 | INFO     | main:create_app:148 - All routers mounted successfully.
+2026-07-13 21:07:17.755 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-13 21:07:17.756 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-13 21:08:01.487 | INFO     | main:create_app:148 - All routers mounted successfully.
+2026-07-13 21:08:01.489 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-13 21:08:01.489 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-13 21:11:05.024 | INFO     | main:create_app:148 - All routers mounted successfully.
+2026-07-13 21:11:05.026 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-13 21:11:05.026 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-13 21:11:26.427 | INFO     | main:create_app:148 - All routers mounted successfully.
+2026-07-13 21:11:26.429 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-13 21:11:26.429 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-13 21:13:11.184 | INFO     | main:create_app:148 - All routers mounted successfully.
+2026-07-13 21:13:11.185 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-13 21:13:11.186 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-13 21:13:12.969 | INFO     | app.services.cloudant_service:__init__:45 - CloudantService created in lazy mode — will connect on first use.
+2026-07-13 21:13:12.969 | INFO     | app.services.watsonx_service:__init__:66 - WatsonxService created in lazy mode — will connect on first use.
+2026-07-13 21:13:14.372 | INFO     | app.services.rag_service:__init__:48 - RAGService initialised – ChromaDB at './chroma_db'.
+2026-07-13 21:13:14.373 | INFO     | main:lifespan:70 - Service stubs registered — connections will be established on first use.
+2026-07-13 21:13:15.954 | INFO     | main:create_app:148 - All routers mounted successfully.
+2026-07-13 21:13:15.955 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-13 21:13:15.956 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-13 21:13:17.237 | INFO     | app.services.cloudant_service:__init__:45 - CloudantService created in lazy mode — will connect on first use.
+2026-07-13 21:13:17.237 | INFO     | app.services.watsonx_service:__init__:66 - WatsonxService created in lazy mode — will connect on first use.
+2026-07-13 21:13:17.462 | INFO     | app.services.rag_service:__init__:48 - RAGService initialised – ChromaDB at './chroma_db'.
+2026-07-13 21:13:17.463 | INFO     | main:lifespan:70 - Service stubs registered — connections will be established on first use.
+2026-07-13 21:13:48.356 | INFO     | main:lifespan:74 - EduSimplify AI backend shutting down …
+2026-07-13 21:13:49.750 | INFO     | main:create_app:148 - All routers mounted successfully.
+2026-07-13 21:13:49.752 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-13 21:13:49.752 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-13 21:13:50.775 | INFO     | app.services.cloudant_service:__init__:45 - CloudantService created in lazy mode — will connect on first use.
+2026-07-13 21:13:50.775 | INFO     | app.services.watsonx_service:__init__:66 - WatsonxService created in lazy mode — will connect on first use.
+2026-07-13 21:13:51.002 | INFO     | app.services.rag_service:__init__:48 - RAGService initialised – ChromaDB at './chroma_db'.
+2026-07-13 21:13:51.002 | INFO     | main:lifespan:70 - Service stubs registered — connections will be established on first use.
+2026-07-13 21:16:56.363 | INFO     | main:lifespan:74 - EduSimplify AI backend shutting down …
+2026-07-13 21:17:21.799 | INFO     | main:create_app:148 - All routers mounted successfully.
+2026-07-13 21:17:21.801 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-13 21:17:21.802 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-13 21:17:23.158 | INFO     | app.services.cloudant_service:__init__:45 - CloudantService created in lazy mode — will connect on first use.
+2026-07-13 21:17:23.159 | INFO     | app.services.watsonx_service:__init__:66 - WatsonxService created in lazy mode — will connect on first use.
+2026-07-13 21:17:23.416 | INFO     | app.services.rag_service:__init__:48 - RAGService initialised – ChromaDB at './chroma_db'.
+2026-07-13 21:17:23.416 | INFO     | main:lifespan:70 - Service stubs registered — connections will be established on first use.
+2026-07-13 21:22:19.994 | INFO     | main:lifespan:74 - EduSimplify AI backend shutting down …
+2026-07-13 21:22:23.174 | INFO     | main:create_app:154 - All routers mounted successfully.
+2026-07-13 21:22:23.177 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-13 21:22:23.177 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-13 21:22:26.907 | INFO     | app.services.cloudant_service:__init__:45 - CloudantService created in lazy mode — will connect on first use.
+2026-07-13 21:22:26.908 | INFO     | app.services.watsonx_service:__init__:66 - WatsonxService created in lazy mode — will connect on first use.
+2026-07-13 21:22:27.420 | INFO     | app.services.rag_service:__init__:48 - RAGService initialised – ChromaDB at './chroma_db'.
+2026-07-13 21:22:27.420 | INFO     | main:lifespan:70 - Service stubs registered — connections will be established on first use.
+2026-07-13 21:33:52.425 | INFO     | main:lifespan:74 - EduSimplify AI backend shutting down …

@@ -1,0 +1,146 @@
+version: "3.9"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# EduSimplify AI – Docker Compose (local development & staging)
+# ──────────────────────────────────────────────────────────────────────────────
+# Usage:
+#   docker compose up --build          # start all services
+#   docker compose up backend          # start only the backend
+#   docker compose down -v             # stop and remove volumes
+# ──────────────────────────────────────────────────────────────────────────────
+
+networks:
+  edusimplify_net:
+    driver: bridge
+
+volumes:
+  chroma_data:
+    driver: local
+  redis_data:
+    driver: local
+
+services:
+
+  # ── FastAPI Backend ──────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: edusimplify_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    networks:
+      - edusimplify_net
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - chroma_data:/app/chroma_db
+      - ./backend:/app                  # live-reload in development (remove in prod)
+    environment:
+      # ── Application ────────────────────────────────────────────────────────
+      APP_ENV: ${APP_ENV:-development}
+      APP_SECRET_KEY: ${APP_SECRET_KEY:-changeme_supersecret_localdev}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+
+      # ── IBM watsonx.ai ──────────────────────────────────────────────────────
+      IBM_WATSONX_API_KEY: ${IBM_WATSONX_API_KEY}
+      IBM_WATSONX_PROJECT_ID: ${IBM_WATSONX_PROJECT_ID}
+      IBM_WATSONX_URL: ${IBM_WATSONX_URL:-https://us-south.ml.cloud.ibm.com}
+      IBM_WATSONX_MODEL_ID: ${IBM_WATSONX_MODEL_ID:-ibm/granite-13b-chat-v2}
+      IBM_WATSONX_EMBED_MODEL_ID: ${IBM_WATSONX_EMBED_MODEL_ID:-ibm/slate-30m-english-rtrvr}
+
+      # ── IBM Cloud Object Storage ────────────────────────────────────────────
+      IBM_COS_API_KEY: ${IBM_COS_API_KEY}
+      IBM_COS_INSTANCE_CRN: ${IBM_COS_INSTANCE_CRN}
+      IBM_COS_ENDPOINT: ${IBM_COS_ENDPOINT:-https://s3.us-south.cloud-object-storage.appdomain.cloud}
+      IBM_COS_BUCKET_NAME: ${IBM_COS_BUCKET_NAME:-edusimplify-documents}
+
+      # ── IBM Cloudant ────────────────────────────────────────────────────────
+      IBM_CLOUDANT_URL: ${IBM_CLOUDANT_URL}
+      IBM_CLOUDANT_API_KEY: ${IBM_CLOUDANT_API_KEY}
+      IBM_CLOUDANT_DB_NAME: ${IBM_CLOUDANT_DB_NAME:-edusimplify-sessions}
+
+      # ── IBM App ID ──────────────────────────────────────────────────────────
+      IBM_APPID_TENANT_ID: ${IBM_APPID_TENANT_ID}
+      IBM_APPID_CLIENT_ID: ${IBM_APPID_CLIENT_ID}
+      IBM_APPID_CLIENT_SECRET: ${IBM_APPID_CLIENT_SECRET}
+      IBM_APPID_OAUTH_SERVER_URL: ${IBM_APPID_OAUTH_SERVER_URL}
+
+      # ── Redis ───────────────────────────────────────────────────────────────
+      REDIS_URL: redis://redis:6379/0
+
+      # ── ChromaDB ────────────────────────────────────────────────────────────
+      CHROMA_PERSIST_DIRECTORY: /app/chroma_db
+      CHROMA_COLLECTION_NAME: ${CHROMA_COLLECTION_NAME:-edusimplify_docs}
+
+      # ── Document Processing ─────────────────────────────────────────────────
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-50}
+      CHUNK_SIZE: ${CHUNK_SIZE:-1000}
+      CHUNK_OVERLAP: ${CHUNK_OVERLAP:-200}
+      MAX_CONTEXT_CHUNKS: ${MAX_CONTEXT_CHUNKS:-5}
+
+      # ── JWT ─────────────────────────────────────────────────────────────────
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-RS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+
+      # ── Logging ─────────────────────────────────────────────────────────────
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ── Redis (session cache + task queue) ──────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: edusimplify_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - edusimplify_net
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Next.js Frontend (optional – for full-stack local dev) ───────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: edusimplify_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - edusimplify_net
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_APP_NAME: EduSimplify AI
+      NEXT_PUBLIC_IBM_APPID_CLIENT_ID: ${IBM_APPID_CLIENT_ID}
+      NEXT_PUBLIC_IBM_APPID_DISCOVERY_ENDPOINT: ${IBM_APPID_OAUTH_SERVER_URL}/.well-known/openid-configuration
+      NEXT_PUBLIC_IBM_APPID_REDIRECT_URI: http://localhost:3000/callback
+      NEXT_PUBLIC_MAX_UPLOAD_MB: "50"
+      NEXT_PUBLIC_SUPPORTED_LANGUAGES: English,Hindi,Tamil,Telugu,Bengali,Marathi,Kannada,Gujarati
+    profiles:
+      - fullstack

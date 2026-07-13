@@ -1,0 +1,292 @@
+{
+  "info": {
+    "_postman_id": "edusimplify-ai-collection",
+    "name": "EduSimplify AI API",
+    "description": "Complete API collection for EduSimplify AI backend. Powered by IBM watsonx.ai and Meta Llama 3 70B.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "doc_id",
+      "value": "your-document-id-here",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "your-jwt-token-here",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health",
+            "description": "Check service liveness"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Upload",
+      "item": [
+        {
+          "name": "Upload PDF",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/upload",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "/path/to/document.pdf" },
+                { "key": "learner_level", "value": "intermediate", "type": "text" },
+                { "key": "language", "value": "English", "type": "text" }
+              ]
+            },
+            "description": "Upload a PDF for processing. Returns doc_id and processing status."
+          }
+        },
+        {
+          "name": "Get Upload Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/upload/{{doc_id}}/status",
+            "description": "Poll the processing status of an uploaded document."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "Chat with Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/chat",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doc_id\": \"{{doc_id}}\",\n  \"message\": \"What are the key concepts in this document?\",\n  \"learner_level\": \"intermediate\",\n  \"language\": \"English\",\n  \"history\": []\n}"
+            },
+            "description": "Chat with the AI tutor about the uploaded document. Context is grounded in retrieved chunks only."
+          }
+        },
+        {
+          "name": "Chat Stream",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/chat/stream",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doc_id\": \"{{doc_id}}\",\n  \"message\": \"Explain backpropagation\",\n  \"learner_level\": \"beginner\",\n  \"language\": \"English\",\n  \"history\": []\n}"
+            },
+            "description": "Streaming chat response via Server-Sent Events."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Study",
+      "item": [
+        {
+          "name": "Generate Study Notes",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/study/notes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doc_id\": \"{{doc_id}}\",\n  \"learner_level\": \"intermediate\",\n  \"language\": \"English\",\n  \"topic\": \"neural networks\"\n}"
+            },
+            "description": "Generate structured study notes with objectives, key concepts, examples, diagrams, and revision tips."
+          }
+        },
+        {
+          "name": "Simplify Concept",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/simplify",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doc_id\": \"{{doc_id}}\",\n  \"text\": \"The backpropagation algorithm computes gradients via the chain rule of calculus.\",\n  \"action\": \"analogy\",\n  \"learner_level\": \"beginner\",\n  \"language\": \"English\"\n}"
+            },
+            "description": "Simplify or explain a highlighted text. Actions: explain, simplify, analogy, example, mathematical, intuitive."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quiz",
+      "item": [
+        {
+          "name": "Generate Quiz",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/quiz",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doc_id\": \"{{doc_id}}\",\n  \"quiz_type\": \"mcq\",\n  \"difficulty\": \"medium\",\n  \"num_questions\": 10,\n  \"learner_level\": \"intermediate\",\n  \"language\": \"English\"\n}"
+            },
+            "description": "Generate a quiz from document content. Types: mcq, true_false, short_answer, long_answer."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Flashcards",
+      "item": [
+        {
+          "name": "Generate Flashcards",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/flashcards",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doc_id\": \"{{doc_id}}\",\n  \"num_cards\": 20,\n  \"learner_level\": \"intermediate\",\n  \"language\": \"English\"\n}"
+            },
+            "description": "Generate flashcards with question/answer pairs from document content."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Revision",
+      "item": [
+        {
+          "name": "Generate Revision Sheet",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/revision",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doc_id\": \"{{doc_id}}\",\n  \"revision_type\": \"cheat_sheet\",\n  \"learner_level\": \"advanced\",\n  \"language\": \"English\"\n}"
+            },
+            "description": "Generate a revision sheet. Types: formula_sheet, cheat_sheet, mind_map, summary, exam_notes."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Translation",
+      "item": [
+        {
+          "name": "Translate Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/translate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Backpropagation is an algorithm used to train neural networks.\",\n  \"target_language\": \"Hindi\",\n  \"preserve_technical_terms\": true\n}"
+            },
+            "description": "Translate content to a target language. Supported: English, Hindi, Bengali, Tamil, Telugu, Marathi."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Progress",
+      "item": [
+        {
+          "name": "Get Progress",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/progress",
+            "description": "Get user learning progress, streak, quiz scores, and weak areas."
+          }
+        },
+        {
+          "name": "Update Progress",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/progress/update",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doc_id\": \"{{doc_id}}\",\n  \"activity_type\": \"quiz_completed\",\n  \"score\": 85,\n  \"topics_covered\": [\"neural networks\", \"backpropagation\"]\n}"
+            },
+            "description": "Update user learning progress after completing an activity."
+          }
+        },
+        {
+          "name": "Get History",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/history",
+            "description": "Get upload and study activity history."
+          }
+        },
+        {
+          "name": "Submit Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{auth_token}}" }
+            ],
+            "url": "{{base_url}}/feedback",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doc_id\": \"{{doc_id}}\",\n  \"feedback_type\": \"response_quality\",\n  \"rating\": 5,\n  \"comment\": \"Excellent explanation!\"\n}"
+            },
+            "description": "Submit feedback on AI-generated content."
+          }
+        }
+      ]
+    }
+  ]
+}
