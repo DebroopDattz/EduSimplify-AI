@@ -3,17 +3,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "installCommand": "npm install",
-  "env": {
-    "NEXT_PUBLIC_API_URL": "@next_public_api_url",
-    "NEXT_PUBLIC_APP_NAME": "@next_public_app_name",
-    "NEXT_PUBLIC_IBM_APPID_CLIENT_ID": "@next_public_ibm_appid_client_id",
-    "NEXT_PUBLIC_IBM_APPID_DISCOVERY_ENDPOINT": "@next_public_ibm_appid_discovery_endpoint",
-    "NEXT_PUBLIC_IBM_APPID_REDIRECT_URI": "@next_public_ibm_appid_redirect_uri",
-    "NEXT_PUBLIC_MAX_UPLOAD_MB": "@next_public_max_upload_mb",
-    "NEXT_PUBLIC_SUPPORTED_LANGUAGES": "@next_public_supported_languages",
-    "NEXT_PUBLIC_POSTHOG_KEY": "@next_public_posthog_key",
-    "NEXT_PUBLIC_POSTHOG_HOST": "@next_public_posthog_host"
-  },
   "headers": [
     {
       "source": "/api/(.*)",
