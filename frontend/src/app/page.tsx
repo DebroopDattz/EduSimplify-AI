@@ -128,33 +128,6 @@ const steps = [
   },
 ];
 
-/* ── Testimonials ─────────────────────────────────────────────── */
-const testimonials = [
-  {
-    quote:
-      "EduSimplify cut my exam prep time in half. The AI quizzes are eerily accurate at targeting my weak spots.",
-    name: "Priya Sharma",
-    role: "Medical Student, IIT Delhi",
-    initials: "PS",
-    color: "bg-ibm-500",
-  },
-  {
-    quote:
-      "I uploaded 40 pages of economics notes and had a clean summary and 20 flashcards in under 2 minutes. Unbelievable.",
-    name: "Marcus Chen",
-    role: "MBA Candidate, Wharton",
-    initials: "MC",
-    color: "bg-purple-500",
-  },
-  {
-    quote:
-      "The concept simplifier explained quantum entanglement to me like I was 12. Finally I get it. Amazing tool.",
-    name: "Amara Osei",
-    role: "Physics Undergrad, UCL",
-    initials: "AO",
-    color: "bg-cyan-500",
-  },
-];
 
 /* ── Section Wrapper ──────────────────────────────────────────── */
 function SectionHeader({
@@ -242,11 +215,7 @@ export default function LandingPage() {
   const featuresInView = useInView(featuresRef, { once: true, margin: "-60px" });
   const stepsRef = useRef(null);
   const stepsInView = useInView(stepsRef, { once: true, margin: "-60px" });
-  const testimonialsRef = useRef(null);
-  const testimonialsInView = useInView(testimonialsRef, {
-    once: true,
-    margin: "-60px",
-  });
+
   const ctaRef = useRef(null);
   const ctaInView = useInView(ctaRef, { once: true, margin: "-60px" });
 
@@ -266,7 +235,7 @@ export default function LandingPage() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            {["Features", "How It Works", "Testimonials"].map((item) => (
+            {["Features", "How It Works"].map((item) => (
               <a
                 key={item}
                 href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
@@ -590,65 +559,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── Testimonials Section ──────────────────────────────── */}
-        <section
-          id="testimonials"
-          className="py-24"
-          ref={testimonialsRef}
-        >
-          <div className="container px-4">
-            <SectionHeader
-              badge="Testimonials"
-              title={
-                <>
-                  Loved by{" "}
-                  <span className="gradient-text">students worldwide</span>
-                </>
-              }
-              subtitle="Join thousands of students who are already studying smarter with EduSimplify AI."
-            />
 
-            <motion.div
-              variants={stagger}
-              initial="hidden"
-              animate={testimonialsInView ? "visible" : "hidden"}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6"
-            >
-              {testimonials.map((t, i) => (
-                <motion.div key={t.name} variants={fadeUp} custom={i}>
-                  <Card className="card-lift h-full border border-border/60 gradient-bg-subtle">
-                    <CardContent className="p-6">
-                      <div className="flex gap-0.5 mb-4">
-                        {Array.from({ length: 5 }).map((_, j) => (
-                          <Star
-                            key={j}
-                            className="w-4 h-4 fill-yellow-400 text-yellow-400"
-                          />
-                        ))}
-                      </div>
-                      <blockquote className="text-muted-foreground text-sm leading-relaxed mb-5 italic">
-                        &ldquo;{t.quote}&rdquo;
-                      </blockquote>
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-full ${t.color} flex items-center justify-center text-white text-sm font-bold flex-shrink-0`}
-                        >
-                          {t.initials}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-sm">{t.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {t.role}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
 
         {/* ── CTA Section ───────────────────────────────────────── */}
         <section className="py-24 gradient-bg-subtle" ref={ctaRef}>
