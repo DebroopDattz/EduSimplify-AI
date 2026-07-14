@@ -108,20 +108,19 @@ async def upload_document(
     cloudant_svc = _cloudant(request)
     rag_svc = _rag(request)
 
-    # ── 3. Upload to COS ───────────────────────────────────────────────────────
+    # ── 3. Upload to COS (Optional) ───────────────────────────────────────────
     try:
-        cos_svc.upload_file(
-            key=cos_key,
-            file_bytes=file_bytes,
-            content_type="application/pdf",
-        )
-        logger.info(f"[upload] COS upload done – doc_id={doc_id}, key={cos_key}.")
+        if cos_svc._settings.ibm_cos_api_key:
+            cos_svc.upload_file(
+                key=cos_key,
+                file_bytes=file_bytes,
+                content_type="application/pdf",
+            )
+            logger.info(f"[upload] COS upload done – doc_id={doc_id}, key={cos_key}.")
+        else:
+            logger.warning(f"[upload] COS upload bypassed: no COS API Key configured.")
     except Exception as exc:
-        logger.error(f"[upload] COS upload failed: {exc}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Storage service unavailable. Please try again later.",
-        )
+        logger.warning(f"[upload] COS upload failed (proceeding anyway): {exc}")
 
     # ── 4. Persist initial metadata in Cloudant ────────────────────────────────
     doc_meta = {
