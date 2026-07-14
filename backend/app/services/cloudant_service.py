@@ -1,176 +1,112 @@
 """
-EduSimplify AI – IBM Cloudant service.
+EduSimplify AI – Local file-based mock of IBM Cloudant service.
 
-Wraps the ``ibmcloudant`` Python SDK and exposes a simple document-oriented
-interface aligned with what the rest of the application needs:
-
-- ``create_document``   – insert a new document (auto-generates ``_id`` if absent)
-- ``get_document``      – fetch a document by its ID
-- ``update_document``   – replace/merge a document (requires current ``_rev``)
-- ``query_documents``   – Cloudant Selector (Mango) query
-- ``delete_document``   – soft-delete via the ``_deleted`` flag approach or
-                          hard-delete using ``_rev``
+Provides a fully offline, local JSON file-based database implementation matching the 
+CloudantService interface. This eliminates the need for any external database platform 
+for demo and submission purposes.
 """
 
 from __future__ import annotations
 
+import os
+import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-
-from ibmcloudant.cloudant_v1 import CloudantV1, Document
-from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 from loguru import logger
-from tenacity import retry, stop_after_attempt, wait_exponential
-
-from app.config import get_settings
-
 
 class CloudantService:
     """
-    Document-store client backed by IBM Cloudant.
-
-    All methods accept a ``db_name`` parameter so the service can be reused
-    across multiple logical databases (e.g. documents, progress, feedback).
+    Local file-based document store that acts as a drop-in replacement for IBM Cloudant.
+    Stores all collection data inside a local 'local_db.json' file.
     """
 
     def __init__(self, lazy: bool = True) -> None:
-        settings = get_settings()
-        self._settings = settings
-        self._default_db = settings.cloudant_db_name
-        self._client = None
-        if not lazy:
-            self._client = self._build_client(settings)
-        else:
-            logger.info("CloudantService created in lazy mode — will connect on first use.")
+        self._db_path = "./local_db.json"
+        logger.info(f"Using local file-based database at '{self._db_path}' (IBM Cloudant bypassed).")
+        # Ensure the file exists
+        if not os.path.exists(self._db_path):
+            self._write_db({})
 
-    def _build_client(self, settings=None):
-        if settings is None:
-            settings = self._settings
-        authenticator = IAMAuthenticator(apikey=settings.cloudant_apikey)
-        client = CloudantV1(authenticator=authenticator)
-        client.set_service_url(settings.cloudant_url)
-        logger.info(f"CloudantService connected – URL: {settings.cloudant_url}.")
-        return client
+    def _read_db(self) -> Dict[str, Any]:
+        try:
+            if os.path.exists(self._db_path):
+                with open(self._db_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception as exc:
+            logger.error(f"Failed to read local database: {exc}")
+        return {}
 
-    def _get_client(self) -> CloudantV1:
-        if self._client is None:
-            self._client = self._build_client()
-        return self._client
-
-    # ─── Internal helpers ─────────────────────────────────────────────────────
+    def _write_db(self, data: Dict[str, Any]) -> None:
+        try:
+            with open(self._db_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as exc:
+            logger.error(f"Failed to write local database: {exc}")
 
     @staticmethod
     def _now_iso() -> str:
         return datetime.now(timezone.utc).isoformat()
 
-    def _ensure_db(self, db_name: str) -> None:
-        """Create the database if it does not already exist."""
-        try:
-            self._get_client().put_database(db=db_name).get_result()
-            logger.debug(f"Database '{db_name}' created.")
-        except Exception as exc:
-            # 412 = already exists – that is fine
-            if "already exists" not in str(exc).lower() and "412" not in str(exc):
-                logger.warning(f"Could not create database '{db_name}': {exc}")
-
     # ─── Public API ───────────────────────────────────────────────────────────
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
     def create_document(
         self,
         doc: Dict[str, Any],
         db_name: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """
-        Insert a new document into Cloudant.
-
-        If the doc does not contain ``_id``, a UUID4 is generated.
-        ``created_at`` and ``updated_at`` timestamps are added automatically.
-
-        Args:
-            doc: The document dict to insert.
-            db_name: Target database (defaults to ``CLOUDANT_DB_NAME``).
-
-        Returns:
-            The response dict containing ``id``, ``rev``, and ``ok``.
-        """
-        target_db = db_name or self._default_db
-        self._ensure_db(target_db)
+        db = self._read_db()
+        target_db = db_name or "edusimplify"
+        
+        if target_db not in db:
+            db[target_db] = {}
 
         if "_id" not in doc:
             doc["_id"] = str(uuid.uuid4())
         doc.setdefault("created_at", self._now_iso())
         doc["updated_at"] = self._now_iso()
+        doc["_rev"] = f"1-{uuid.uuid4().hex[:8]}"
 
-        cloudant_doc = Document.from_dict(doc)
-        result = self._get_client().post_document(db=target_db, document=cloudant_doc).get_result()
-        logger.debug(f"Created document id={result.get('id')} in '{target_db}'.")
-        return result
+        db[target_db][doc["_id"]] = doc
+        self._write_db(db)
+        logger.debug(f"Created local document id={doc['_id']} in '{target_db}'.")
+        return {"id": doc["_id"], "rev": doc["_rev"], "ok": True}
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
     def get_document(
         self,
         doc_id: str,
         db_name: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
-        """
-        Fetch a single document by ID.
+        db = self._read_db()
+        target_db = db_name or "edusimplify"
+        
+        doc = db.get(target_db, {}).get(doc_id)
+        if doc:
+            return dict(doc)
+        return None
 
-        Args:
-            doc_id: The ``_id`` of the target document.
-            db_name: Target database.
-
-        Returns:
-            Document dict, or ``None`` if not found.
-        """
-        target_db = db_name or self._default_db
-        try:
-            doc = self._get_client().get_document(db=target_db, doc_id=doc_id).get_result()
-            return doc
-        except Exception as exc:
-            if "404" in str(exc) or "not found" in str(exc).lower():
-                return None
-            logger.error(f"get_document failed for id={doc_id}: {exc}")
-            raise
-
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
     def update_document(
         self,
         doc_id: str,
         updates: Dict[str, Any],
         db_name: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """
-        Update an existing document by merging *updates* into the stored doc.
-
-        Fetches the current revision, merges ``updates``, and writes back.
-
-        Args:
-            doc_id: ID of the document to update.
-            updates: Key-value pairs to merge (shallow).
-            db_name: Target database.
-
-        Returns:
-            Cloudant response dict with the new ``rev``.
-
-        Raises:
-            FileNotFoundError: If the document does not exist.
-        """
-        target_db = db_name or self._default_db
-        existing = self.get_document(doc_id, db_name=target_db)
+        db = self._read_db()
+        target_db = db_name or "edusimplify"
+        
+        existing = db.get(target_db, {}).get(doc_id)
         if existing is None:
             raise FileNotFoundError(f"Document '{doc_id}' not found in '{target_db}'.")
 
-        merged = {**existing, **updates, "_id": doc_id, "_rev": existing["_rev"]}
+        merged = {**existing, **updates, "_id": doc_id}
         merged["updated_at"] = self._now_iso()
+        merged["_rev"] = f"2-{uuid.uuid4().hex[:8]}"
 
-        cloudant_doc = Document.from_dict(merged)
-        result = self._get_client().post_document(db=target_db, document=cloudant_doc).get_result()
-        logger.debug(f"Updated document id={doc_id} in '{target_db}' → rev={result.get('rev')}.")
-        return result
+        db[target_db][doc_id] = merged
+        self._write_db(db)
+        logger.debug(f"Updated local document id={doc_id} in '{target_db}'.")
+        return {"id": doc_id, "rev": merged["_rev"], "ok": True}
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
     def query_documents(
         self,
         selector: Dict[str, Any],
@@ -178,65 +114,52 @@ class CloudantService:
         limit: int = 25,
         db_name: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """
-        Execute a Cloudant Mango (selector) query.
+        db = self._read_db()
+        target_db = db_name or "edusimplify"
+        docs = list(db.get(target_db, {}).values())
 
-        Args:
-            selector: Mango selector expression, e.g. ``{"user_id": {"$eq": "abc"}}``.
-            fields: Optional list of field names to include in results.
-            limit: Maximum number of documents to return.
-            db_name: Target database.
+        # Simple selector matching (Mango style)
+        results = []
+        for doc in docs:
+            match = True
+            for key, val in selector.items():
+                doc_val = doc.get(key)
+                if isinstance(val, dict):
+                    if "$eq" in val:
+                        target_val = val["$eq"]
+                    else:
+                        target_val = val
+                else:
+                    target_val = val
 
-        Returns:
-            List of matching document dicts.
-        """
-        target_db = db_name or self._default_db
-        payload: Dict[str, Any] = {"selector": selector, "limit": limit}
-        if fields:
-            payload["fields"] = fields
+                if doc_val != target_val:
+                    match = False
+                    break
+            
+            if match:
+                if fields:
+                    filtered_doc = {f: doc.get(f) for f in fields if f in doc}
+                    if "_id" in fields and "_id" not in filtered_doc:
+                        filtered_doc["_id"] = doc["_id"]
+                    results.append(filtered_doc)
+                else:
+                    results.append(dict(doc))
 
-        try:
-            result = self._get_client().post_find(db=target_db, selector=selector, limit=limit).get_result()
-            docs: List[Dict[str, Any]] = result.get("docs", [])
-            logger.debug(f"Mango query on '{target_db}' returned {len(docs)} doc(s).")
-            return docs
-        except Exception as exc:
-            logger.error(f"Mango query failed on '{target_db}': {exc}")
-            raise
+        results.sort(key=lambda d: d.get("uploaded_at", ""), reverse=True)
+        return results[:limit]
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
     def delete_document(
         self,
         doc_id: str,
         rev: Optional[str] = None,
         db_name: Optional[str] = None,
     ) -> bool:
-        """
-        Hard-delete a document from Cloudant.
-
-        If *rev* is not supplied, the current revision is fetched first.
-
-        Args:
-            doc_id: The ``_id`` of the document.
-            rev: The current ``_rev``; fetched automatically if omitted.
-            db_name: Target database.
-
-        Returns:
-            True on success, False if the document was not found.
-        """
-        target_db = db_name or self._default_db
-
-        if rev is None:
-            existing = self.get_document(doc_id, db_name=target_db)
-            if existing is None:
-                return False
-            rev = existing["_rev"]
-
-        try:
-            self._get_client().delete_document(db=target_db, doc_id=doc_id, rev=rev)
-            logger.info(f"Deleted document id={doc_id} from '{target_db}'.")
+        db = self._read_db()
+        target_db = db_name or "edusimplify"
+        
+        if target_db in db and doc_id in db[target_db]:
+            del db[target_db][doc_id]
+            self._write_db(db)
+            logger.info(f"Deleted local document id={doc_id} from '{target_db}'.")
             return True
-        except Exception as exc:
-            logger.error(f"delete_document failed for id={doc_id}: {exc}")
-            raise
-
+        return False
