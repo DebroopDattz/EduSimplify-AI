@@ -22,7 +22,7 @@ class CloudantService:
     """
 
     def __init__(self, lazy: bool = True) -> None:
-        self._db_path = "./local_db.json"
+        self._db_path = "./chroma_db/local_db.json"
         logger.info(f"Using local file-based database at '{self._db_path}' (IBM Cloudant bypassed).")
         # Ensure the file exists
         if not os.path.exists(self._db_path):
