@@ -8,7 +8,8 @@ Wraps the ``ibm-watsonx-ai`` SDK and exposes three high-level primitives:
 
 All network calls are protected with retry logic.
 If credentials are not configured or the connection fails, the service falls back
-gracefully to local, zero-memory, deterministic mock implementations to ensure 100% uptime.
+gracefully to a local, zero-memory, fully dynamic mock implementation that parses 
+and extracts content from the uploaded PDF directly, ensuring 100% dynamic behavior.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import random
+import re
 from typing import AsyncGenerator, List, Optional
 
 from loguru import logger
@@ -30,8 +32,8 @@ SENTENCE_TRANSFORMER_MODEL = "all-MiniLM-L6-v2"
 class WatsonxService:
     """
     Client wrapper around IBM watsonx.ai.
-    Falls back to a zero-memory deterministic hash embedder when IBM Slate and local
-    sentence-transformers are unavailable (highly useful for 512MB RAM environments like Render).
+    Falls back to a zero-memory deterministic hash embedder and a dynamic local parser
+    when IBM Slate and watsonx are unavailable (perfect for free environments like Render).
     """
 
     def __init__(self, lazy: bool = True) -> None:
@@ -174,7 +176,7 @@ class WatsonxService:
     def get_embeddings(self, texts: List[str]) -> List[List[float]]:
         """
         Generate dense vector embeddings.
-        Falls back to zero-memory deterministic vectors directly if IBM services fail or are missing.
+        Falls back to zero-memory dense vectors directly if IBM services fail or are missing.
         """
         try:
             if not self._settings.watsonx_api_key or self._settings.watsonx_api_key == "change-me-in-production":
@@ -204,196 +206,344 @@ class WatsonxService:
         """Fallback: zero-memory deterministic float vectors."""
         vectors = []
         for text in texts:
-            # Generate stable hash to seed random floats
             seed_val = abs(hash(text)) % (10 ** 8)
             rng = random.Random(seed_val)
-            # Use 384 dimensions matching typical lightweight models
             vectors.append([rng.uniform(-1.0, 1.0) for _ in range(384)])
         logger.debug(f"Generated {len(vectors)} offline mock vectors of dim 384.")
         return vectors
 
+    # ── Dynamic Local In-Memory Generators ────────────────────────────────────
+
+    def _extract_context(self, prompt: str) -> str:
+        """Extract retrieved context chunks from the prompt."""
+        match = re.search(r"CONTEXT(?: CHUNKS)?:\s*(.*)", prompt, re.DOTALL | re.IGNORECASE)
+        if match:
+            text = match.group(1).strip()
+            # Clean up template endings
+            text = re.sub(r"<\|.*?\|>", "", text).strip()
+            return text
+        return ""
+
+    def _get_sentences(self, text: str) -> List[str]:
+        """Split text into sentences cleanly."""
+        if not text:
+            return []
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        return [s.strip() for s in sentences if len(s.strip()) > 12 and not s.startswith("<|")]
+
     def _get_mock_completion(self, prompt: str) -> str:
-        """Generate structured mock responses matching expected JSON properties for offline use."""
+        """Generate dynamic responses using the uploaded document context extracted from the prompt."""
+        context = self._extract_context(prompt)
         prompt_lower = prompt.lower()
-        
-        # 1. QUIZ QUESTIONS
+
+        if not context:
+            if "quizquestion" in prompt_lower or "quiz" in prompt_lower or "correct_answer" in prompt_lower:
+                return self._get_static_quiz()
+            elif "flashcard" in prompt_lower or "front" in prompt_lower or "back" in prompt_lower:
+                return self._get_static_flashcards()
+            elif "revision" in prompt_lower or "revisionresponse" in prompt_lower:
+                return self._get_static_revision()
+            elif "studynotesresponse" in prompt_lower or "key_concepts" in prompt_lower or "overview" in prompt_lower:
+                return self._get_static_notes()
+            return "I am EduSimplify AI, your local study assistant. Please upload a PDF and ask me anything about its contents!"
+
         if "quizquestion" in prompt_lower or "quiz" in prompt_lower or "correct_answer" in prompt_lower:
-            return json.dumps([
+            return self._generate_dynamic_quiz(context)
+        elif "flashcard" in prompt_lower or "front" in prompt_lower or "back" in prompt_lower:
+            return self._generate_dynamic_flashcards(context)
+        elif "revision" in prompt_lower or "revisionresponse" in prompt_lower:
+            return self._generate_dynamic_revision(context)
+        elif "studynotesresponse" in prompt_lower or "key_concepts" in prompt_lower or "overview" in prompt_lower:
+            return self._generate_dynamic_notes(context)
+        
+        return self._generate_dynamic_chat(prompt, context)
+
+    # ── Dynamic Generators ────────────────────────────────────────────────────
+
+    def _generate_dynamic_chat(self, prompt: str, context: str) -> str:
+        sentences = self._get_sentences(context)
+        if not sentences:
+            return "I am EduSimplify AI. I've read your document, but could not extract enough sentences. Ask me anything!"
+        
+        words = re.findall(r"\b\w{4,}\b", prompt.lower())
+        best_sentence = ""
+        best_count = 0
+        
+        for s in sentences:
+            count = sum(1 for w in words if w in s.lower())
+            if count > best_count:
+                best_count = count
+                best_sentence = s
+                
+        if best_sentence:
+            return f"Based on your document:\n\n> {best_sentence}\n\nHope this helps clarify! Let me know if you need more details from this section."
+        
+        summary = " ".join(sentences[:3])
+        return f"I searched the document for your query. Here is a summary of the relevant section:\n\n{summary}"
+
+    def _generate_dynamic_notes(self, context: str) -> str:
+        sentences = self._get_sentences(context)
+        if len(sentences) < 4:
+            return self._get_static_notes()
+            
+        title = "Study Guide: " + " ".join(sentences[0].split()[:5]) + "..."
+        overview = sentences[0] + " " + sentences[1]
+        
+        objectives = [
+            f"Analyze: {sentences[2]}",
+            f"Understand the concept of: {' '.join(sentences[3].split()[:4])}...",
+            f"Evaluate the principles highlighted in: {' '.join(sentences[-1].split()[:4])}..."
+        ]
+        
+        key_concepts = []
+        concept_idx = 0
+        for i in range(2, min(len(sentences), 12), 2):
+            if i + 1 < len(sentences):
+                concept_idx += 1
+                heading = " ".join(sentences[i].split()[:4]).capitalize()
+                key_concepts.append({
+                    "heading": f"{concept_idx}. {heading}",
+                    "content": sentences[i] + " " + sentences[i+1]
+                })
+        
+        if not key_concepts:
+            key_concepts = [{"heading": "Core Subject", "content": context}]
+
+        definitions = {}
+        for s in sentences:
+            for marker in [" is ", " refers to ", " defined as ", " stands for "]:
+                if marker in s:
+                    parts = s.split(marker, 1)
+                    term = parts[0].strip()
+                    definition = parts[1].strip()
+                    if len(term) < 40 and len(definition) > 10 and len(definition) < 150:
+                        definitions[term.capitalize()] = definition
+                        break
+            if len(definitions) >= 3:
+                break
+        
+        if not definitions:
+            definitions = {
+                "Key Concept": sentences[3] if len(sentences) > 3 else "Main subject discussed in document."
+            }
+
+        return json.dumps({
+            "title": title,
+            "overview": overview,
+            "objectives": objectives,
+            "definitions": definitions,
+            "key_concepts": key_concepts,
+            "examples": [
+                f"Application case: {sentences[4]}" if len(sentences) > 4 else "Real-world example relating to context.",
+                f"Practical illustration: {sentences[5]}" if len(sentences) > 5 else "Hands-on instance found in readings."
+            ],
+            "common_mistakes": [
+                "Misinterpreting the core relationship described in the passage.",
+                "Overlooking the context-specific definitions of terms."
+            ],
+            "applications": [
+                "Academic research and exam preparation.",
+                "Practical conceptual grounding."
+            ],
+            "summary": sentences[-1] if sentences else "Summarized content.",
+            "revision_tips": [
+                f"Key takeaway to memorize: {sentences[2]}" if len(sentences) > 2 else "Read through the main points carefully.",
+                f"Focus area: {sentences[3]}" if len(sentences) > 3 else "Review terminology and structural details."
+            ]
+        }, indent=2)
+
+    def _generate_dynamic_quiz(self, context: str) -> str:
+        sentences = self._get_sentences(context)
+        if len(sentences) < 3:
+            return self._get_static_quiz()
+
+        questions = []
+        for idx, s in enumerate(sentences[:5], start=1):
+            words = s.split()
+            if len(words) < 6:
+                continue
+            
+            question_text = f"According to the text, which statement is true regarding: '{' '.join(words[:5])}'?"
+            correct = s
+            distractor_1 = s.replace(words[0], "Alternatively,").replace(words[1], "another factor")
+            distractor_2 = "This concept is unrelated to standard operations or findings."
+            distractor_3 = "The text indicates that the opposite of this outcome is typical."
+            
+            options = [
+                {"key": "A", "text": correct},
+                {"key": "B", "text": distractor_1},
+                {"key": "C", "text": distractor_2},
+                {"key": "D", "text": distractor_3}
+            ]
+            random.shuffle(options)
+            correct_key = "A"
+            for i, opt in enumerate(options):
+                opt_key = chr(65 + i)
+                if opt["text"] == correct:
+                    correct_key = opt_key
+                opt["key"] = opt_key
+
+            questions.append({
+                "question_number": idx,
+                "question": question_text,
+                "quiz_type": "mcq",
+                "difficulty": "medium",
+                "options": options,
+                "correct_answer": correct_key,
+                "explanation": f"The document states: '{s}'",
+                "topic": "Text Details"
+            })
+            
+        if not questions:
+            return self._get_static_quiz()
+            
+        return json.dumps(questions, indent=2)
+
+    def _generate_dynamic_flashcards(self, context: str) -> str:
+        sentences = self._get_sentences(context)
+        if len(sentences) < 3:
+            return self._get_static_flashcards()
+
+        cards = []
+        for idx, s in enumerate(sentences[:5], start=1):
+            words = s.split()
+            mid = len(words) // 2
+            front = " ".join(words[:mid]) + "..."
+            back = "... " + " ".join(words[mid:])
+            
+            cards.append({
+                "card_number": idx,
+                "front": front,
+                "back": back,
+                "difficulty": "medium",
+                "topic": "Key Facts"
+            })
+        return json.dumps(cards, indent=2)
+
+    def _generate_dynamic_revision(self, context: str) -> str:
+        sentences = self._get_sentences(context)
+        if len(sentences) < 3:
+            return self._get_static_revision()
+
+        sections = []
+        for idx, s in enumerate(sentences[:4]):
+            heading = " ".join(s.split()[:4]).capitalize()
+            sections.append({
+                "heading": f"{idx+1}. {heading}",
+                "content": s
+            })
+
+        return json.dumps({
+            "title": "Revision Highlights: Core Readings",
+            "content": "A high-yield summary extracted directly from your document's key concepts.",
+            "sections": sections
+        }, indent=2)
+
+    # ── Static Fallback Templates ─────────────────────────────────────────────
+
+    def _get_static_notes(self) -> str:
+        return json.dumps({
+            "title": "Comprehensive Study Guide: Machine Learning & RAG Systems",
+            "overview": "An educational guide detailing the architecture, implementation, and optimization of Retrieval-Augmented Generation (RAG) models.",
+            "objectives": [
+                "Understand how to ingest and process PDFs into clean text chunks.",
+                "Understand semantic vector indexing and search using ChromaDB.",
+                "Master LLM prompt grounding techniques to avoid model hallucinations."
+            ],
+            "definitions": {
+                "Chunking": "The process of splitting a long document into smaller, coherent text segments.",
+                "Hallucination": "A phenomenon where an LLM generates grammatically correct but factually incorrect information.",
+                "Granite / Llama": "State-of-the-art open large language models used for generative text tasks."
+            },
+            "key_concepts": [
                 {
-                    "question_number": 1,
-                    "question": "What is the primary goal of Retrieval-Augmented Generation (RAG)?",
-                    "quiz_type": "multiple_choice",
-                    "difficulty": "medium",
-                    "options": [
-                        {"key": "A", "text": "To replace LLMs entirely with search engines"},
-                        {"key": "B", "text": "To ground LLM responses using retrieved external context"},
-                        {"key": "C", "text": "To speed up model training times"},
-                        {"key": "D", "text": "To translate text between different languages"}
-                    ],
-                    "correct_answer": "B",
-                    "explanation": "Retrieval-Augmented Generation (RAG) retrieves relevant documents or information to feed as context into the prompt of an LLM, reducing hallucinations.",
-                    "topic": "RAG Architectures"
+                    "heading": "Ingestion Pipeline",
+                    "content": "Extract text using pdfplumber, normalise whitespaces, detect equations/tables, and create overlapping text chunks."
                 },
                 {
-                    "question_number": 2,
-                    "question": "Which component is responsible for vector database lookups in a RAG pipeline?",
-                    "quiz_type": "multiple_choice",
-                    "difficulty": "medium",
-                    "options": [
-                        {"key": "A", "text": "A standard relational SQL database"},
-                        {"key": "B", "text": "An embedding-based vector database (like ChromaDB)"},
-                        {"key": "C", "text": "A compiler or tokenizer"},
-                        {"key": "D", "text": "A simple flat file system"}
-                    ],
-                    "correct_answer": "B",
-                    "explanation": "Vector databases index document chunk embeddings to allow semantic similarity searches at query time.",
-                    "topic": "Vector Stores"
+                    "heading": "Retrieval Mechanics",
+                    "content": "At query time, generate a query vector, perform a nearest-neighbor lookup in ChromaDB, and build the context string."
                 },
                 {
-                    "question_number": 3,
-                    "question": "True or False: LLMs can only generate text based on their pre-trained weights.",
-                    "quiz_type": "true_false",
-                    "difficulty": "easy",
-                    "options": [
-                        {"key": "T", "text": "True"},
-                        {"key": "F", "text": "False"}
-                    ],
-                    "correct_answer": "F",
-                    "explanation": "LLMs can also utilize new information supplied as context directly inside their input prompts (in-context learning).",
-                    "topic": "In-Context Learning"
-                },
-                {
-                    "question_number": 4,
-                    "question": "What is the function of an embedding model?",
-                    "quiz_type": "multiple_choice",
-                    "difficulty": "medium",
-                    "options": [
-                        {"key": "A", "text": "To convert words/sentences into high-dimensional numerical vectors"},
-                        {"key": "B", "text": "To translate code from Python to C++"},
-                        {"key": "C", "text": "To run calculations on spreadsheets"},
-                        {"key": "D", "text": "To compile regular expressions"}
-                    ],
-                    "correct_answer": "A",
-                    "explanation": "Embedding models map words, sentences, or documents to numerical vectors representing semantic meaning.",
-                    "topic": "Embeddings"
-                },
-                {
-                    "question_number": 5,
-                    "question": "Why is document chunking important before vector database storage?",
-                    "quiz_type": "multiple_choice",
-                    "difficulty": "hard",
-                    "options": [
-                        {"key": "A", "text": "To bypass file system size limitations"},
-                        {"key": "B", "text": "To keep retrieval precise and within the LLM's context window limit"},
-                        {"key": "C", "text": "To encrypt sensitive user information"},
-                        {"key": "D", "text": "To speed up the upload process"}
-                    ],
-                    "correct_answer": "B",
-                    "explanation": "Chunking splits long documents into smaller parts, ensuring retrieved context is highly relevant and fits context window limitations.",
-                    "topic": "Chunking Strategies"
+                    "heading": "Augmented Generation",
+                    "content": "Inject context into a system prompt enforcing the LLM to only answer based on the provided material."
                 }
-            ], indent=2)
+            ],
+            "examples": [
+                "Example 1: Chatbot querying standard operating procedures (SOPs) to guide customer support.",
+                "Example 2: An educational tool reading textbooks and generating multi-choice questions dynamically."
+            ],
+            "summary": "RAG bridges the gap between static pre-training weights and active knowledge repositories, making generative models fact-grounded.",
+            "revision_tips": [
+                "Always use overlapping windows when chunking (e.g. 500 chars with 50 overlap) to preserve context boundaries.",
+                "Keep system prompts strict to penalise hallucinated answers."
+            ]
+        }, indent=2)
 
-        # 2. FLASHCARDS
-        if "flashcard" in prompt_lower or "front" in prompt_lower or "back" in prompt_lower:
-            return json.dumps([
+    def _get_static_quiz(self) -> str:
+        return json.dumps([
+            {
+                "question_number": 1,
+                "question": "What is the primary goal of Retrieval-Augmented Generation (RAG)?",
+                "quiz_type": "mcq",
+                "difficulty": "medium",
+                "options": [
+                    {"key": "A", "text": "To replace LLMs entirely with search engines"},
+                    {"key": "B", "text": "To ground LLM responses using retrieved external context"},
+                    {"key": "C", "text": "To speed up model training times"},
+                    {"key": "D", "text": "To translate text between different languages"}
+                ],
+                "correct_answer": "B",
+                "explanation": "Retrieval-Augmented Generation (RAG) retrieves relevant documents or information to feed as context into the prompt of an LLM, reducing hallucinations.",
+                "topic": "RAG Architectures"
+            },
+            {
+                "question_number": 2,
+                "question": "Which component is responsible for vector database lookups in a RAG pipeline?",
+                "quiz_type": "mcq",
+                "difficulty": "medium",
+                "options": [
+                    {"key": "A", "text": "A standard relational SQL database"},
+                    {"key": "B", "text": "An embedding-based vector database (like ChromaDB)"},
+                    {"key": "C", "text": "A compiler or tokenizer"},
+                    {"key": "D", "text": "A simple flat file system"}
+                ],
+                "correct_answer": "B",
+                "explanation": "Vector databases index document chunk embeddings to allow semantic similarity searches at query time.",
+                "topic": "Vector Stores"
+            }
+        ], indent=2)
+
+    def _get_static_flashcards(self) -> str:
+        return json.dumps([
+            {
+                "card_number": 1,
+                "front": "Retrieval-Augmented Generation (RAG)",
+                "back": "A technique that retrieves external documents to feed context into an LLM, improving accuracy and grounding.",
+                "difficulty": "easy",
+                "topic": "Core Concepts"
+            },
+            {
+                "card_number": 2,
+                "front": "Vector Embedding",
+                "back": "A numerical vector of floats representing the semantic meaning of a text segment.",
+                "difficulty": "medium",
+                "topic": "Mathematical Foundations"
+            }
+        ], indent=2)
+
+    def _get_static_revision(self) -> str:
+        return json.dumps({
+            "title": "Quick Revision Sheet: Core AI Concepts",
+            "content": "This cheat-sheet covers the foundational building blocks of modern Retrieval-Augmented Generation systems, vector databases, and search.",
+            "sections": [
                 {
-                    "card_number": 1,
-                    "front": "Retrieval-Augmented Generation (RAG)",
-                    "back": "A technique that retrieves external documents to feed context into an LLM, improving accuracy and grounding.",
-                    "difficulty": "easy",
-                    "topic": "Core Concepts"
+                    "heading": "1. What is RAG?",
+                    "content": "RAG stands for Retrieval-Augmented Generation. Instead of relying solely on LLM memory, we fetch relevant paragraphs from a custom corpus and inject them as context."
                 },
                 {
-                    "card_number": 2,
-                    "front": "Vector Embedding",
-                    "back": "A numerical vector of floats representing the semantic meaning of a text segment.",
-                    "difficulty": "medium",
-                    "topic": "Mathematical Foundations"
-                },
-                {
-                    "card_number": 3,
-                    "front": "ChromaDB",
-                    "back": "An open-source embedding database designed for AI application workflows and semantic searches.",
-                    "difficulty": "medium",
-                    "topic": "Infrastructure"
-                },
-                {
-                    "card_number": 4,
-                    "front": "Cosine Similarity",
-                    "back": "A metric used to measure how similar two vectors are, calculated as the cosine of the angle between them.",
-                    "difficulty": "hard",
-                    "topic": "Retrieval Metrics"
-                },
-                {
-                    "card_number": 5,
-                    "front": "In-Context Learning",
-                    "back": "The ability of an LLM to follow patterns and instructions provided within the prompt itself without parameter updates.",
-                    "difficulty": "easy",
-                    "topic": "Prompt Engineering"
+                    "heading": "2. Embeddings & Vectors",
+                    "content": "Text is turned into float lists (vectors) by embedding models. Similar concepts sit closer together in the vector space."
                 }
-            ], indent=2)
-
-        # 3. REVISION SHEET
-        if "revision" in prompt_lower or "revisionresponse" in prompt_lower:
-            return json.dumps({
-                "title": "Quick Revision Sheet: Core AI Concepts",
-                "content": "This cheat-sheet covers the foundational building blocks of modern Retrieval-Augmented Generation systems, vector databases, and semantic search.",
-                "sections": [
-                    {
-                        "heading": "1. What is RAG?",
-                        "content": "RAG stands for Retrieval-Augmented Generation. Instead of relying solely on LLM memory, we fetch relevant paragraphs from a custom corpus and inject them as context."
-                    },
-                    {
-                        "heading": "2. Embeddings & Vectors",
-                        "content": "Text is turned into float lists (vectors) by embedding models. Similar concepts sit closer together in the vector space."
-                    },
-                    {
-                        "heading": "3. Vector Databases",
-                        "content": "ChromaDB, Pinecone, and pgvector index these vectors for rapid similarity searches (e.g. Cosine or L2 Distance)."
-                    }
-                ]
-            }, indent=2)
-
-        # 4. STUDY NOTES
-        if "studynotesresponse" in prompt_lower or "key_concepts" in prompt_lower or "overview" in prompt_lower:
-            return json.dumps({
-                "title": "Comprehensive Study Guide: Machine Learning & RAG Systems",
-                "overview": "An educational guide detailing the architecture, implementation, and optimization of Retrieval-Augmented Generation (RAG) models.",
-                "objectives": [
-                    "Understand how to ingest and process PDFs into clean text chunks.",
-                    "Understand semantic vector indexing and search using ChromaDB.",
-                    "Master LLM prompt grounding techniques to avoid model hallucinations."
-                ],
-                "definitions": {
-                    "Chunking": "The process of splitting a long document into smaller, coherent text segments.",
-                    "Hallucination": "A phenomenon where an LLM generates grammatically correct but factually incorrect information.",
-                    "Granite / Llama": "State-of-the-art open large language models used for generative text tasks."
-                },
-                "key_concepts": [
-                    {
-                        "heading": "Ingestion Pipeline",
-                        "content": "Extract text using pdfplumber, normalise whitespaces, detect equations/tables, and create overlapping text chunks."
-                    },
-                    {
-                        "heading": "Retrieval Mechanics",
-                        "content": "At query time, generate a query vector, perform a nearest-neighbor lookup in ChromaDB, and build the context string."
-                    },
-                    {
-                        "heading": "Augmented Generation",
-                        "content": "Inject context into a system prompt enforcing the LLM to only answer based on the provided material."
-                    }
-                ],
-                "examples": [
-                    "Example 1: Chatbot querying standard operating procedures (SOPs) to guide customer support.",
-                    "Example 2: An educational tool reading textbooks and generating multi-choice questions dynamically."
-                ],
-                "summary": "RAG bridges the gap between static pre-training weights and active knowledge repositories, making generative models fact-grounded.",
-                "revision_tips": [
-                    "Always use overlapping windows when chunking (e.g. 500 chars with 50 overlap) to preserve context boundaries.",
-                    "Keep system prompts strict to penalise hallucinated answers."
-                ]
-            }, indent=2)
-
-        # 5. GENERAL CHAT / FALLBACK
-        return "I am EduSimplify AI, your local study assistant. I've read your document, indexed it into our local database, and am ready to help you summarize, explain, or quiz yourself on the concepts!"
+            ]
+        }, indent=2)
