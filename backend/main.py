@@ -37,15 +37,6 @@ logger.add(
     colorize=True,
     enqueue=True,
 )
-logger.add(
-    "logs/edusimplify.log",
-    rotation="50 MB",
-    retention="14 days",
-    compression="gz",
-    level="DEBUG",
-    enqueue=True,
-)
-
 # ─── Lifespan ─────────────────────────────────────────────────────────────────
 
 
