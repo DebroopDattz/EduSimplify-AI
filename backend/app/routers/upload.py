@@ -26,6 +26,8 @@ from app.services.pdf_service import (
     extract_text_from_pdf,
 )
 
+from app.middleware.auth import require_auth
+
 router = APIRouter()
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -62,6 +64,7 @@ async def upload_document(
     user_id: str = Form(..., description="ID of the uploading user."),
     subject: str = Form(default="", description="Subject or course name."),
     tags: str = Form(default="", description="Comma-separated tags."),
+    user: dict = require_auth,
 ) -> UploadResponse:
     """
     Accept a PDF, validate it, process it through the full RAG pipeline, and

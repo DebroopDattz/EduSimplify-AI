@@ -194,6 +194,11 @@ async def get_current_user(
     Returns:
         The decoded JWT payload dict.
     """
+    settings = get_settings()
+    # Graceful fallback for local runs and demo deployment when IBM App ID is not configured
+    if not settings.app_id_tenant_id or settings.app_id_tenant_id in ("change-me", "change-me-in-production", ""):
+        return {"sub": "demo-user", "email": "demo@example.com"}
+
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

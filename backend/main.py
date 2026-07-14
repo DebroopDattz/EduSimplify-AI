@@ -122,7 +122,7 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["Health"], summary="Health check")
     async def health_check() -> dict:
         """Return service liveness status."""
-        return {"status": "healthy", "service": "EduSimplify AI"}
+        return {"status": "ok", "service": "EduSimplify AI", "version": "1.0.0"}
 
     @app.get("/favicon.ico", include_in_schema=False)
     async def favicon() -> dict:

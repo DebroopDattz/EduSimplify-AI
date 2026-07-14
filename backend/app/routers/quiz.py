@@ -25,6 +25,7 @@ from app.models.schemas import (
     QuizResponse,
     QuizType,
 )
+from app.middleware.auth import require_auth
 
 router = APIRouter()
 
@@ -97,7 +98,7 @@ def _build_quiz_prompt(
 
 
 @router.post("", response_model=QuizResponse, summary="Generate a quiz from document")
-async def generate_quiz(body: QuizRequest, request: Request) -> QuizResponse:
+async def generate_quiz(body: QuizRequest, request: Request, user: dict = require_auth) -> QuizResponse:
     """
     Generate a quiz grounded in the uploaded document's content.
 

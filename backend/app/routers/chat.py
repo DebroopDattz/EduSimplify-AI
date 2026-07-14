@@ -18,6 +18,7 @@ from fastapi.responses import StreamingResponse
 from loguru import logger
 
 from app.models.schemas import ChatRequest, ChatResponse, LearnerLevel
+from app.middleware.auth import require_auth
 
 router = APIRouter()
 
@@ -91,7 +92,7 @@ def _build_prompt(system: str, history: list, user_message: str) -> str:
 
 
 @router.post("", response_model=ChatResponse, summary="Chat with your document")
-async def chat(body: ChatRequest, request: Request) -> ChatResponse:
+async def chat(body: ChatRequest, request: Request, user: dict = require_auth) -> ChatResponse:
     """
     Context-grounded Q&A chat.
 
@@ -136,7 +137,7 @@ async def chat(body: ChatRequest, request: Request) -> ChatResponse:
 
 
 @router.post("/stream", summary="Streaming chat with your document")
-async def chat_stream(body: ChatRequest, request: Request) -> StreamingResponse:
+async def chat_stream(body: ChatRequest, request: Request, user: dict = require_auth) -> StreamingResponse:
     """
     Server-Sent Events streaming variant of /chat.
 
