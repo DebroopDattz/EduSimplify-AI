@@ -13,6 +13,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+# pyrefly: ignore [missing-import]
 from loguru import logger
 
 class CloudantService:
@@ -22,7 +23,9 @@ class CloudantService:
     """
 
     def __init__(self, lazy: bool = True) -> None:
-        self._db_path = "./chroma_db/local_db.json"
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self._db_path = os.path.join(base_dir, "chroma_db", "local_db.json")
+        os.makedirs(os.path.dirname(self._db_path), exist_ok=True)
         logger.info(f"Using local file-based database at '{self._db_path}' (IBM Cloudant bypassed).")
         # Ensure the file exists
         if not os.path.exists(self._db_path):

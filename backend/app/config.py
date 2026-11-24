@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     app_id_region: str = "us-south"
 
     # ── Application security ──────────────────────────────────────────────────
-    secret_key: str = "change-me-in-production"
+    secret_key: str = "edusimplify-secure-secret-key-for-local-demo-and-testing-32chars"
 
     # ── CORS ──────────────────────────────────────────────────────────────────
     allowed_origins: str = "http://localhost:3000,http://localhost:5173"

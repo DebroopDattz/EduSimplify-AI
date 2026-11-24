@@ -58,6 +58,12 @@ def _rag(request: Request):
     status_code=status.HTTP_202_ACCEPTED,
     summary="Upload a PDF document",
 )
+@router.post(
+    "/upload",
+    response_model=UploadResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    include_in_schema=False,
+)
 async def upload_document(
     request: Request,
     file: UploadFile = File(..., description="PDF file to upload (max 50 MB)."),
@@ -227,6 +233,47 @@ async def get_upload_status(doc_id: str, request: Request) -> UploadStatusRespon
         error=doc.get("error"),
         completed_at=datetime.fromisoformat(completed_at) if completed_at else None,
     )
+
+
+@router.get(
+    "/{doc_id}",
+    summary="Get document metadata",
+)
+async def get_document_metadata(doc_id: str, request: Request) -> dict:
+    """Retrieve document details from metadata store."""
+    cloudant_svc = _cloudant(request)
+    doc = cloudant_svc.get_document(doc_id=doc_id)
+    if doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document '{doc_id}' not found.",
+        )
+    return doc
+
+
+@router.get(
+    "",
+    summary="Get all documents",
+)
+async def get_all_documents(request: Request) -> List[dict]:
+    """Retrieve list of all uploaded documents."""
+    cloudant_svc = _cloudant(request)
+    # Our local db service supports querying via query_documents
+    docs = cloudant_svc.query_documents(selector={"type": "document"})
+    return docs
+
+
+@router.delete(
+    "/{doc_id}",
+    summary="Delete a document",
+)
+async def delete_document(doc_id: str, request: Request) -> dict:
+    """Permanently delete a document and its vector embeddings."""
+    cloudant_svc = _cloudant(request)
+    rag_svc = _rag(request)
+    rag_svc.delete_collection(doc_id)
+    success = cloudant_svc.delete_document(doc_id)
+    return {"success": success, "doc_id": doc_id}
 
 
 # ── Private helpers ────────────────────────────────────────────────────────────

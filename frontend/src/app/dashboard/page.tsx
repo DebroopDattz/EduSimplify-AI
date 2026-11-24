@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useDocument } from "@/hooks/useDocument";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -212,6 +214,12 @@ function scoreColor(score: number, total: number) {
 
 /* ── Dashboard Page ───────────────────────────────────────────── */
 export default function DashboardPage() {
+  const { documents, fetchDocuments } = useDocument();
+
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
+
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -342,52 +350,52 @@ export default function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {recentUploads.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/40 transition-colors cursor-pointer group"
-                    >
-                      <div
-                        className={`w-10 h-12 rounded-lg ${doc.color} flex items-center justify-center flex-shrink-0 shadow-sm`}
-                      >
-                        <FileText className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium text-sm truncate">
-                            {doc.title}
-                          </p>
-                          <Badge
-                            variant="secondary"
-                            className={`text-xs flex-shrink-0 ${
-                              doc.status === "Completed"
-                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                : "bg-ibm-100 text-ibm-700 dark:bg-ibm-900/30 dark:text-ibm-400"
-                            }`}
-                          >
-                            {doc.status}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
-                          <span>{doc.subject}</span>
-                          <span>•</span>
-                          <span>{doc.pages} pages</span>
-                          <span>•</span>
-                          <span>{doc.uploadedAt}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Progress
-                            value={doc.progress}
-                            className="h-1.5 flex-1"
-                          />
-                          <span className="text-xs text-muted-foreground w-8 text-right">
-                            {doc.progress}%
-                          </span>
-                        </div>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground/0 group-hover:text-muted-foreground transition-all flex-shrink-0" />
+                  {documents.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground gap-3">
+                      <span className="text-3xl">📂</span>
+                      <p className="text-sm font-semibold">No study documents uploaded yet.</p>
+                      <Link href="/upload">
+                        <Button size="sm" className="gradient-bg text-white border-0 shadow-sm">
+                          Upload your first PDF
+                        </Button>
+                      </Link>
                     </div>
-                  ))}
+                  ) : (
+                    documents.slice(0, 4).map((doc) => (
+                      <Link href={`/study/${doc.id}`} key={doc.id} className="block">
+                        <div
+                          className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/40 transition-colors cursor-pointer group"
+                        >
+                          <div
+                            className="w-10 h-12 rounded-lg bg-indigo-500 flex items-center justify-center flex-shrink-0 shadow-sm"
+                          >
+                            <FileText className="w-5 h-5 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-sm truncate">
+                                {doc.title}
+                              </p>
+                              <Badge
+                                variant="secondary"
+                                className="text-xs flex-shrink-0 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                              >
+                                Ready
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span>{doc.language}</span>
+                              <span>•</span>
+                              <span>{doc.level} level</span>
+                              <span>•</span>
+                              <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                          <ArrowRight className="w-4 h-4 text-muted-foreground/0 group-hover:text-muted-foreground transition-all flex-shrink-0" />
+                        </div>
+                      </Link>
+                    ))
+                  )}
                 </CardContent>
               </Card>
             </motion.div>

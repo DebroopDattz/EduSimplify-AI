@@ -81,6 +81,7 @@ def _build_prompt(context: str, num_cards: int, learner_level: str) -> str:
 
 
 @router.post("", response_model=FlashcardResponse, summary="Generate flashcards from document")
+@router.post("/generate", response_model=FlashcardResponse, include_in_schema=False)
 async def generate_flashcards(body: FlashcardRequest, request: Request) -> FlashcardResponse:
     """
     Generate question-answer flashcards grounded in the document's content.

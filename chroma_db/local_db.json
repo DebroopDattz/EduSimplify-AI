@@ -1,0 +1,92 @@
+{
+  "edusimplify": {
+    "98b11fea-c506-4868-84db-dea32ee3fadc": {
+      "_id": "98b11fea-c506-4868-84db-dea32ee3fadc",
+      "type": "document",
+      "user_id": "user_123",
+      "filename": "lecture_notes.pdf",
+      "cos_key": "documents/user_123/98b11fea-c506-4868-84db-dea32ee3fadc/lecture_notes.pdf",
+      "subject": "Math",
+      "tags": [
+        "geometry"
+      ],
+      "status": "completed",
+      "num_chunks": 12,
+      "error": null,
+      "uploaded_at": "2026-11-19T20:32:24.409041+00:00",
+      "created_at": "2026-11-19T20:32:24.409540+00:00",
+      "updated_at": "2026-11-19T20:32:24.417487+00:00",
+      "_rev": "2-3d4149ed",
+      "completed_at": "2026-11-19T20:32:24.415794+00:00"
+    },
+    "79da0eee-3c47-40f3-aac5-1ab5358a9d58": {
+      "_id": "79da0eee-3c47-40f3-aac5-1ab5358a9d58",
+      "type": "document",
+      "user_id": "user_123",
+      "filename": "notes.pdf",
+      "cos_key": "documents/user_123/79da0eee-3c47-40f3-aac5-1ab5358a9d58/notes.pdf",
+      "subject": "",
+      "tags": [],
+      "status": "failed",
+      "num_chunks": 0,
+      "error": "Could not extract text from PDF: No /Root object! - Is this really a PDF?",
+      "uploaded_at": "2026-11-19T20:32:24.444234+00:00",
+      "created_at": "2026-11-19T20:32:24.445635+00:00",
+      "updated_at": "2026-11-19T20:32:24.451093+00:00",
+      "_rev": "2-01004a5b"
+    },
+    "c63994c7-8b7f-4379-bb13-9e3fa3d12f08": {
+      "_id": "c63994c7-8b7f-4379-bb13-9e3fa3d12f08",
+      "type": "document",
+      "user_id": "user_123",
+      "filename": "doc.pdf",
+      "cos_key": "documents/user_123/c63994c7-8b7f-4379-bb13-9e3fa3d12f08/doc.pdf",
+      "subject": "",
+      "tags": [],
+      "status": "completed",
+      "num_chunks": 7,
+      "error": null,
+      "uploaded_at": "2026-11-19T20:32:26.184447+00:00",
+      "created_at": "2026-11-19T20:32:26.186900+00:00",
+      "updated_at": "2026-11-19T20:32:26.195060+00:00",
+      "_rev": "2-d898b28d",
+      "completed_at": "2026-11-19T20:32:26.193692+00:00"
+    },
+    "80619254-59fe-4432-a5b4-8a9fc001e249": {
+      "_id": "80619254-59fe-4432-a5b4-8a9fc001e249",
+      "type": "document",
+      "user_id": "user_123",
+      "filename": "lecture_notes.pdf",
+      "cos_key": "documents/user_123/80619254-59fe-4432-a5b4-8a9fc001e249/lecture_notes.pdf",
+      "subject": "Math",
+      "tags": [
+        "geometry"
+      ],
+      "status": "completed",
+      "num_chunks": 12,
+      "error": null,
+      "uploaded_at": "2026-11-19T21:26:14.719202+00:00",
+      "created_at": "2026-11-19T21:26:14.719851+00:00",
+      "updated_at": "2026-11-19T21:26:14.724220+00:00",
+      "_rev": "2-d65932a7",
+      "completed_at": "2026-11-19T21:26:14.722728+00:00"
+    },
+    "96a294c8-287c-4c35-98ce-b7764317d0ab": {
+      "_id": "96a294c8-287c-4c35-98ce-b7764317d0ab",
+      "type": "document",
+      "user_id": "user_123",
+      "filename": "doc.pdf",
+      "cos_key": "documents/user_123/96a294c8-287c-4c35-98ce-b7764317d0ab/doc.pdf",
+      "subject": "",
+      "tags": [],
+      "status": "completed",
+      "num_chunks": 7,
+      "error": null,
+      "uploaded_at": "2026-11-19T21:26:14.745083+00:00",
+      "created_at": "2026-11-19T21:26:14.746134+00:00",
+      "updated_at": "2026-11-19T21:26:14.749235+00:00",
+      "_rev": "2-74dd4cd5",
+      "completed_at": "2026-11-19T21:26:14.748552+00:00"
+    }
+  }
+}

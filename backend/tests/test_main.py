@@ -17,12 +17,15 @@ from fastapi.testclient import TestClient
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from main import app  # noqa: E402
-
 # Set dummy App ID configuration to force authentication requirement in tests
 os.environ["APP_ID_TENANT_ID"] = "test-tenant-id"
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from app.config import get_settings
+get_settings.cache_clear()
+
+from main import app  # noqa: E402
 
 
 @pytest.fixture(scope="module")

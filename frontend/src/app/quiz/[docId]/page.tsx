@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useDocument } from "@/hooks/useDocument";
 import QuizCard from "@/components/quiz/QuizCard";
 import type { Quiz, QuizAttempt, QuizResult, QuizSettings, QuizQuestion, MCQOption } from "@/types";
 
@@ -322,6 +323,7 @@ export default function QuizPage() {
   const params = useParams();
   const router = useRouter();
   const docId = params.docId as string;
+  const { quiz: backendQuiz, fetchQuiz } = useDocument();
 
   const [phase, setPhase] = useState<QuizPhase>("settings");
   const [settings, setSettings] = useState<QuizSettings>({
@@ -329,24 +331,32 @@ export default function QuizPage() {
     difficulty: "medium",
     numberOfQuestions: 5,
   });
-  const [quiz] = useState<Quiz>(DEMO_QUIZ);
   const [activeQuestions, setActiveQuestions] = useState<QuizQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<QuizResult | null>(null);
   const [startTime, setStartTime] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const handleStart = useCallback(() => {
-    const filtered = quiz.questions.slice(0, settings.numberOfQuestions);
-    setActiveQuestions(filtered);
+  const quiz = backendQuiz || DEMO_QUIZ;
+
+  const handleStart = useCallback(async () => {
+    setLoading(true);
+    const fetchedQuiz = await fetchQuiz(docId, settings);
+    setLoading(false);
+    if (!fetchedQuiz || fetchedQuiz.questions.length === 0) {
+      alert("Failed to generate quiz. Please make sure the document is uploaded.");
+      return;
+    }
+    setActiveQuestions(fetchedQuiz.questions);
     setCurrentIndex(0);
     setAttempts([]);
     setSubmitted(false);
     setResult(null);
     setStartTime(Date.now());
     setPhase("quiz");
-  }, [quiz.questions, settings.numberOfQuestions]);
+  }, [docId, settings, fetchQuiz]);
 
   const handleAnswer = useCallback(
     (answer: string) => {
@@ -441,59 +451,70 @@ export default function QuizPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-        <AnimatePresence mode="wait">
-          {phase === "settings" && (
-            <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <SettingsPanel
-                settings={settings}
-                onChange={setSettings}
-                onStart={handleStart}
-                totalAvailable={quiz.questions.length}
-              />
-            </motion.div>
-          )}
-
-          {phase === "quiz" && activeQuestions.length > 0 && (
-            <motion.div key="quiz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-              <AnimatePresence mode="wait">
-                <QuizCard
-                  key={activeQuestions[currentIndex].id}
-                  question={activeQuestions[currentIndex]}
-                  questionNumber={currentIndex + 1}
-                  totalQuestions={activeQuestions.length}
-                  onAnswer={handleAnswer}
-                  submitted={submitted}
+        {loading ? (
+          <div className="flex h-64 flex-col items-center justify-center gap-3">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="h-10 w-10 rounded-full border-4 border-indigo-200 border-t-indigo-600"
+            />
+            <p className="text-sm font-semibold text-gray-500">Generating quiz from document...</p>
+          </div>
+        ) : (
+          <AnimatePresence mode="wait">
+            {phase === "settings" && (
+              <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <SettingsPanel
+                  settings={settings}
+                  onChange={setSettings}
+                  onStart={handleStart}
+                  totalAvailable={quiz.questions.length}
                 />
-              </AnimatePresence>
+              </motion.div>
+            )}
 
-              {submitted && (
-                <motion.button
-                  type="button"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  onClick={handleNext}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="w-full rounded-2xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                >
-                  {currentIndex < activeQuestions.length - 1 ? "Next Question →" : "See Results 🏆"}
-                </motion.button>
-              )}
-            </motion.div>
-          )}
+            {phase === "quiz" && activeQuestions.length > 0 && (
+              <motion.div key="quiz" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                <AnimatePresence mode="wait">
+                  <QuizCard
+                    key={activeQuestions[currentIndex].id}
+                    question={activeQuestions[currentIndex]}
+                    questionNumber={currentIndex + 1}
+                    totalQuestions={activeQuestions.length}
+                    onAnswer={handleAnswer}
+                    submitted={submitted}
+                  />
+                </AnimatePresence>
 
-          {phase === "results" && result && (
-            <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <ResultScreen
-                result={result}
-                questions={activeQuestions}
-                attempts={attempts}
-                onRetry={handleStart}
-                onBack={() => router.push(`/study/${docId}`)}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+                {submitted && (
+                  <motion.button
+                    type="button"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={handleNext}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="w-full rounded-2xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  >
+                    {currentIndex < activeQuestions.length - 1 ? "Next Question →" : "See Results 🏆"}
+                  </motion.button>
+                )}
+              </motion.div>
+            )}
+
+            {phase === "results" && result && (
+              <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <ResultScreen
+                  result={result}
+                  questions={activeQuestions}
+                  attempts={attempts}
+                  onRetry={handleStart}
+                  onBack={() => router.push(`/study/${docId}`)}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
       </main>
     </div>
   );

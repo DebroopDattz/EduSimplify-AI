@@ -178,27 +178,20 @@ export default function StudyPage() {
   const params = useParams();
   const router = useRouter();
   const docId = params.docId as string;
-  const { fetchStudyNote } = useDocument();
+  const { studyNote, fetchStudyNote } = useDocument();
 
-  const [note, setNote] = useState<StudyNote | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("notes");
   const [highlightResponse, setHighlightResponse] = useState<{ action: string; text: string; result: string } | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    // Try to fetch real data; fall back to demo after a brief delay
-    const timer = setTimeout(() => {
-      setNote(DEMO_NOTE);
+    fetchStudyNote(docId).finally(() => {
       setLoading(false);
-    }, 1200);
-
-    fetchStudyNote(docId).then((/* data */) => {
-      // In real integration: setNote(data); setLoading(false); clearTimeout(timer)
     });
-
-    return () => clearTimeout(timer);
   }, [docId, fetchStudyNote]);
+
+  const note = studyNote || DEMO_NOTE;
 
   const handleConceptAction = useCallback(
     (action: string, selectedText: string) => {

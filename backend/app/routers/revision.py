@@ -116,6 +116,7 @@ def _build_prompt(
 
 
 @router.post("", response_model=RevisionResponse, summary="Generate revision material")
+@router.post("/generate", response_model=RevisionResponse, include_in_schema=False)
 async def generate_revision(body: RevisionRequest, request: Request) -> RevisionResponse:
     """
     Generate a revision artefact from the document content.

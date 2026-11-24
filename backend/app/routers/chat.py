@@ -11,6 +11,8 @@ POST /chat/stream
 
 from __future__ import annotations
 
+import time
+from datetime import datetime, timezone
 from typing import AsyncGenerator
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -134,6 +136,26 @@ async def chat(body: ChatRequest, request: Request, user: dict = require_auth) -
         doc_id=body.doc_id,
         sources=sources,
     )
+
+
+@router.post("/{doc_id}/session", summary="Initialise a chat session")
+@router.post("/session", summary="Initialise a generic chat session", include_in_schema=False)
+async def init_chat_session(doc_id: str = "demo", user: dict = require_auth) -> dict:
+    """Return a fresh or existing chat session envelope."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    user_id = user.get("sub", "local-user") if isinstance(user, dict) else "local-user"
+    return {
+        "status": "success",
+        "data": {
+            "id": f"sess-{doc_id}-{int(time.time())}",
+            "documentId": doc_id,
+            "userId": user_id,
+            "title": "Study Session",
+            "messages": [],
+            "createdAt": now_iso,
+            "updatedAt": now_iso,
+        },
+    }
 
 
 @router.post("/stream", summary="Streaming chat with your document")

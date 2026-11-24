@@ -8,11 +8,11 @@ imported without circular-dependency issues.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ─── Shared enumerations ──────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ class UploadResponse(BaseModel):
     status: ProcessingStatus
     message: str
     cos_key: Optional[str] = Field(None, description="COS object key.")
-    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class UploadStatusResponse(BaseModel):
@@ -118,6 +118,24 @@ class ChatRequest(BaseModel):
     learner_level: LearnerLevel = LearnerLevel.intermediate
     history: List[ChatMessage] = Field(default_factory=list, max_length=20)
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "doc_id" not in data and "documentId" in data:
+                data["doc_id"] = data["documentId"]
+            if "message" not in data:
+                if "messages" in data and isinstance(data["messages"], list) and data["messages"]:
+                    last_msg = data["messages"][-1]
+                    if isinstance(last_msg, dict):
+                        data["message"] = last_msg.get("content", "")
+                        data["history"] = data["messages"][:-1]
+                elif "prompt" in data:
+                    data["message"] = data["prompt"]
+            if "learner_level" not in data and "level" in data:
+                data["learner_level"] = data["level"]
+        return data
+
 
 class ChatResponse(BaseModel):
     """Response from the /chat endpoint."""
@@ -136,6 +154,18 @@ class SimplifyRequest(BaseModel):
     action: ActionType = ActionType.simplify
     learner_level: LearnerLevel = LearnerLevel.intermediate
     doc_id: Optional[str] = Field(None, description="Optional doc context for RAG enrichment.")
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "text" not in data and "passage" in data:
+                data["text"] = data["passage"]
+            if "learner_level" not in data and "targetLevel" in data:
+                data["learner_level"] = data["targetLevel"]
+            if "doc_id" not in data and "documentId" in data:
+                data["doc_id"] = data["documentId"]
+        return data
 
 
 class SimplifyResponse(BaseModel):
@@ -177,7 +207,7 @@ class StudyNotesResponse(BaseModel):
     applications: List[str]
     summary: str
     revision_tips: List[str]
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # ─── Quiz ─────────────────────────────────────────────────────────────────────
@@ -210,6 +240,25 @@ class QuizRequest(BaseModel):
     learner_level: LearnerLevel = LearnerLevel.intermediate
     topic_filter: Optional[str] = Field(None, description="Restrict questions to a sub-topic.")
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "doc_id" not in data and "documentId" in data:
+                data["doc_id"] = data["documentId"]
+            if "num_questions" not in data and "questionCount" in data:
+                data["num_questions"] = data["questionCount"]
+            if "difficulty" in data and data["difficulty"] in ("beginner", "intermediate", "advanced", "expert"):
+                data["learner_level"] = data["difficulty"]
+                data["difficulty"] = "medium"
+            if "types" in data and isinstance(data["types"], list) and data["types"]:
+                t = data["types"][0]
+                if t in ("mcq", "multiple_choice"):
+                    data["quiz_type"] = "mcq"
+                elif t in ("true_false", "true_or_false"):
+                    data["quiz_type"] = "true_false"
+        return data
+
 
 class QuizResponse(BaseModel):
     """Structured quiz returned by the agent."""
@@ -218,7 +267,7 @@ class QuizResponse(BaseModel):
     difficulty: Difficulty
     num_questions: int
     questions: List[QuizQuestion]
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # ─── Flashcards ───────────────────────────────────────────────────────────────
@@ -240,13 +289,23 @@ class FlashcardRequest(BaseModel):
     learner_level: LearnerLevel = LearnerLevel.intermediate
     topic_filter: Optional[str] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "doc_id" not in data and "documentId" in data:
+                data["doc_id"] = data["documentId"]
+            if "num_cards" not in data and "cardCount" in data:
+                data["num_cards"] = data["cardCount"]
+        return data
+
 
 class FlashcardResponse(BaseModel):
     """List of flashcards returned by the agent."""
     doc_id: str
     num_cards: int
     flashcards: List[Flashcard]
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # ─── Revision ─────────────────────────────────────────────────────────────────
@@ -258,6 +317,16 @@ class RevisionRequest(BaseModel):
     revision_type: RevisionType = RevisionType.summary
     learner_level: LearnerLevel = LearnerLevel.intermediate
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "doc_id" not in data and "documentId" in data:
+                data["doc_id"] = data["documentId"]
+            if "learner_level" not in data and "level" in data:
+                data["learner_level"] = data["level"]
+        return data
+
 
 class RevisionResponse(BaseModel):
     """Structured revision sheet returned by the agent."""
@@ -266,7 +335,7 @@ class RevisionResponse(BaseModel):
     title: str
     content: str
     sections: List[StudyNotesSection] = Field(default_factory=list)
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # ─── Translation ──────────────────────────────────────────────────────────────
@@ -343,7 +412,7 @@ class ProgressUpdateRequest(BaseModel):
 
 class FeedbackRequest(BaseModel):
     """User feedback submission."""
-    user_id: str
+    user_id: str = "local-user"
     doc_id: Optional[str] = None
     feature: str = Field(
         ...,
@@ -351,4 +420,16 @@ class FeedbackRequest(BaseModel):
     )
     rating: int = Field(..., ge=1, le=5)
     comment: Optional[str] = Field(None, max_length=2048)
-    submitted_at: datetime = Field(default_factory=datetime.utcnow)
+    submitted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "user_id" not in data:
+                data["user_id"] = "local-user"
+            if "feature" not in data and "featureType" in data:
+                data["feature"] = data["featureType"]
+            if "doc_id" not in data and "documentId" in data:
+                data["doc_id"] = data["documentId"]
+        return data

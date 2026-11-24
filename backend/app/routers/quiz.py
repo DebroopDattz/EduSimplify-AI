@@ -98,6 +98,7 @@ def _build_quiz_prompt(
 
 
 @router.post("", response_model=QuizResponse, summary="Generate a quiz from document")
+@router.post("/generate", response_model=QuizResponse, include_in_schema=False)
 async def generate_quiz(body: QuizRequest, request: Request, user: dict = require_auth) -> QuizResponse:
     """
     Generate a quiz grounded in the uploaded document's content.

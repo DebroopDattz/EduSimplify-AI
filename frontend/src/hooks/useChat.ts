@@ -202,28 +202,29 @@ export function useChat(): UseChatReturn {
 
       try {
         const res = await fetch(
-          `${API_BASE}/api/chat/${session?.documentId ?? "demo"}/message`,
+          `${API_BASE}/chat`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              sessionId: session?.id,
+              doc_id: session?.documentId || "demo",
               message: content.trim(),
+              learner_level: "intermediate",
+              history: messages.map(m => ({ role: m.role, content: m.content })),
             }),
           }
         );
 
         if (!res.ok) throw new Error("API error");
 
-        // If streaming SSE, handle here; otherwise fall through to demo
         const data = await res.json();
-        const replyText = data.data?.content ?? data.content ?? DEMO_RESPONSES.default;
+        const replyText = data.response || data.content || DEMO_RESPONSES.default;
         appendAssistantStream(replyText);
       } catch {
         appendAssistantStream(DEMO_RESPONSES.default);
       }
     },
-    [isStreaming, session, appendAssistantStream]
+    [isStreaming, session, messages, appendAssistantStream]
   );
 
   const regenerateLastResponse = useCallback(async () => {

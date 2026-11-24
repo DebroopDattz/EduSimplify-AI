@@ -133,6 +133,7 @@ def create_app() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.routers import upload, chat, study, quiz, flashcards, revision, translate, progress
 
+    # Primary root endpoints
     app.include_router(upload.router, prefix="/upload", tags=["Upload"])
     app.include_router(chat.router, prefix="/chat", tags=["Chat"])
     app.include_router(study.router, tags=["Study"])          # /study/notes + /simplify
@@ -141,6 +142,18 @@ def create_app() -> FastAPI:
     app.include_router(revision.router, prefix="/revision", tags=["Revision"])
     app.include_router(translate.router, prefix="/translate", tags=["Translation"])
     app.include_router(progress.router, tags=["Progress"])    # /progress + /history + /feedback
+
+    # API compatibility endpoints (supports /api and /api/v1 calls from frontend clients)
+    for api_prefix in ("/api", "/api/v1"):
+        app.include_router(upload.router, prefix=f"{api_prefix}/documents", tags=["API Documents"])
+        app.include_router(upload.router, prefix=f"{api_prefix}/upload", tags=["API Upload"])
+        app.include_router(chat.router, prefix=f"{api_prefix}/chat", tags=["API Chat"])
+        app.include_router(study.router, prefix=api_prefix, tags=["API Study"])
+        app.include_router(quiz.router, prefix=f"{api_prefix}/quiz", tags=["API Quiz"])
+        app.include_router(flashcards.router, prefix=f"{api_prefix}/flashcards", tags=["API Flashcards"])
+        app.include_router(revision.router, prefix=f"{api_prefix}/revision", tags=["API Revision"])
+        app.include_router(translate.router, prefix=f"{api_prefix}/translate", tags=["API Translation"])
+        app.include_router(progress.router, prefix=api_prefix, tags=["API Progress"])
 
     logger.info("All routers mounted successfully.")
     return app

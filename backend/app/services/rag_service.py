@@ -14,6 +14,7 @@ the supplied context.
 
 from __future__ import annotations
 
+import os
 from typing import List, Optional
 
 import chromadb
@@ -26,7 +27,8 @@ from app.services.pdf_service import TextChunk
 
 # ─── ChromaDB collection naming ───────────────────────────────────────────────
 
-_CHROMA_PERSIST_DIR = "./chroma_db"
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_CHROMA_PERSIST_DIR = os.path.join(_BASE_DIR, "chroma_db")
 _COLLECTION_PREFIX = "edusimplify_"
 
 

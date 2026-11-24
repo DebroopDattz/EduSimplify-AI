@@ -85,6 +85,13 @@ class COSService:
             RuntimeError: If the upload fails after retries.
         """
         target_bucket = bucket or self._bucket
+        if (
+            not self._settings.ibm_cos_api_key
+            or self._settings.ibm_cos_api_key in ("your_cos_api_key_here", "change-me-in-production")
+            or self._settings.ibm_cos_api_key.startswith("your_")
+        ):
+            logger.warning(f"No COS API Key configured. Simulated upload for key '{key}'.")
+            return key
         logger.debug(f"Uploading {len(file_bytes):,} bytes → {target_bucket}/{key}.")
         try:
             self._get_client().put_object(

@@ -40,7 +40,7 @@ def _cloudant(request: Request):
 @router.get("/progress", response_model=ProgressResponse, summary="Get user learning progress")
 async def get_progress(
     request: Request,
-    user_id: str = Query(..., description="User identifier."),
+    user_id: str = Query(default="local-user", description="User identifier."),
 ) -> ProgressResponse:
     """
     Return aggregated learning progress metrics for the specified user.
@@ -181,7 +181,7 @@ async def update_progress(body: ProgressUpdateRequest, request: Request) -> dict
 @router.get("/history", response_model=HistoryResponse, summary="Get upload/study history")
 async def get_history(
     request: Request,
-    user_id: str = Query(..., description="User identifier."),
+    user_id: str = Query(default="local-user", description="User identifier."),
     limit: int = Query(default=20, ge=1, le=100, description="Max results to return."),
     skip: int = Query(default=0, ge=0, description="Number of results to skip (pagination)."),
 ) -> HistoryResponse:

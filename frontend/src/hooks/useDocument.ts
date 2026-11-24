@@ -4,8 +4,15 @@ import { useState, useCallback, useRef } from "react";
 import type {
   Document,
   StudyNote,
+  NoteSection,
+  KeyConcept,
   Quiz,
+  QuizQuestion,
+  QuizSettings,
   FlashcardDeck,
+  Flashcard,
+  FlashcardStatus,
+  FormulaEntry,
   RevisionSheet,
   LearnerLevel,
   SupportedLanguage,
@@ -33,6 +40,70 @@ function buildSteps(currentIndex: number): ProcessingProgress[] {
   }));
 }
 
+function mapBackendNotesToFrontend(data: any, docId: string): StudyNote {
+  const sections: NoteSection[] = [
+    {
+      id: "overview",
+      type: "overview",
+      title: "Overview",
+      content: data.overview || "",
+    },
+    {
+      id: "objectives",
+      type: "learning_objectives",
+      title: "Learning Objectives",
+      content: (data.objectives || []).map((o: string) => `• ${o}`).join("\n"),
+    },
+    {
+      id: "key_concepts",
+      type: "key_concepts",
+      title: "Key Concepts",
+      content: "The following core concepts are essential for understanding this topic:",
+      keyConcepts: (data.key_concepts || []).map((kc: any) => ({
+        term: kc.heading || "",
+        definition: kc.content || "",
+        example: "",
+      })),
+      mermaid: data.diagrams?.[0] || "",
+    },
+    {
+      id: "examples",
+      type: "examples",
+      title: "Examples",
+      content: (data.examples || []).join("\n\n"),
+    },
+    {
+      id: "common_mistakes",
+      type: "common_mistakes",
+      title: "Common Mistakes",
+      content: (data.common_mistakes || []).map((m: string) => `• ${m}`).join("\n"),
+    },
+    {
+      id: "applications",
+      type: "applications",
+      title: "Real-World Applications",
+      content: (data.applications || []).map((a: string) => `• ${a}`).join("\n"),
+    },
+    {
+      id: "summary",
+      type: "summary",
+      title: "Summary",
+      content: data.summary || "",
+    },
+  ];
+
+  return {
+    id: data.id || `note-${docId}`,
+    documentId: docId,
+    title: data.title || "Study Notes",
+    level: "intermediate",
+    language: "english",
+    generatedAt: data.generated_at || new Date().toISOString(),
+    sections,
+    tags: [],
+  };
+}
+
 interface UseDocumentReturn {
   documents: Document[];
   activeDocument: Document | null;
@@ -52,14 +123,13 @@ interface UseDocumentReturn {
   ) => Promise<string | null>;
   fetchDocument: (docId: string) => Promise<void>;
   fetchStudyNote: (docId: string) => Promise<void>;
-  fetchQuiz: (docId: string) => Promise<void>;
+  fetchQuiz: (docId: string, settings?: QuizSettings) => Promise<Quiz | null>;
   fetchFlashcardDeck: (docId: string) => Promise<void>;
   fetchRevisionSheet: (docId: string) => Promise<void>;
   fetchDocuments: () => Promise<void>;
   clearError: () => void;
 }
 
-// Simulated API base — swap for real endpoint
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export function useDocument(): UseDocumentReturn {
@@ -80,12 +150,11 @@ export function useDocument(): UseDocumentReturn {
 
   const clearError = useCallback(() => setError(null), []);
 
-  // Simulate step-by-step processing progress
   const simulateProcessing = useCallback(async () => {
     setIsProcessing(true);
     for (let i = 0; i < PROCESSING_STEPS.length; i++) {
       setProcessingSteps(buildSteps(i));
-      await new Promise<void>((r) => setTimeout(r, 900));
+      await new Promise<void>((r) => setTimeout(r, 600));
     }
     setProcessingSteps(
       PROCESSING_STEPS.map((s) => ({
@@ -112,8 +181,9 @@ export function useDocument(): UseDocumentReturn {
       try {
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("level", level);
-        formData.append("language", language);
+        formData.append("user_id", "local-user");
+        formData.append("subject", file.name.replace(/\.pdf$/i, ""));
+        formData.append("tags", "");
 
         const docId = await new Promise<string>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
@@ -129,9 +199,8 @@ export function useDocument(): UseDocumentReturn {
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 const data = JSON.parse(xhr.responseText);
-                resolve(data.data?.documentId ?? data.documentId ?? "demo-id");
+                resolve(data.doc_id ?? data.documentId ?? "demo-id");
               } catch {
-                // Fallback for demo/local dev
                 resolve(`demo-${Date.now()}`);
               }
             } else {
@@ -140,18 +209,16 @@ export function useDocument(): UseDocumentReturn {
           });
 
           xhr.addEventListener("error", () => {
-            // Fallback to simulated upload for demo mode
             resolve(`demo-${Date.now()}`);
           });
 
-          xhr.open("POST", `${API_BASE}/api/documents/upload`);
+          xhr.open("POST", `${API_BASE}/upload`);
           xhr.send(formData);
         });
 
         setIsUploading(false);
         await simulateProcessing();
 
-        // Add a mock document entry to local list
         const newDoc: Document = {
           id: docId,
           userId: "local-user",
@@ -185,12 +252,27 @@ export function useDocument(): UseDocumentReturn {
 
   const fetchDocument = useCallback(async (docId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/documents/${docId}`);
+      const res = await fetch(`${API_BASE}/upload/${docId}`);
       if (!res.ok) throw new Error("Failed to fetch document");
       const data = await res.json();
-      setActiveDocument(data.data ?? data);
+      setActiveDocument({
+        id: data._id || docId,
+        userId: data.user_id || "local-user",
+        title: data.subject || data.filename?.replace(/\.pdf$/i, "") || "Study Document",
+        fileName: data.filename || "document.pdf",
+        fileSize: 1024 * 1024,
+        uploadedAt: data.uploaded_at || new Date().toISOString(),
+        status: "ready",
+        level: "intermediate",
+        language: "english",
+        processingSteps: PROCESSING_STEPS.map((s) => ({
+          step: s.step,
+          label: s.label,
+          percent: 100,
+          done: true,
+        })),
+      });
     } catch {
-      // Use stub for demo
       setActiveDocument({
         id: docId,
         userId: "local-user",
@@ -213,43 +295,129 @@ export function useDocument(): UseDocumentReturn {
 
   const fetchDocuments = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/documents`);
+      const res = await fetch(`${API_BASE}/upload`);
       if (!res.ok) throw new Error("Failed to fetch documents");
       const data = await res.json();
-      setDocuments(data.data ?? data ?? []);
+      const docs: Document[] = (data || []).map((d: any) => ({
+        id: d._id || "",
+        userId: d.user_id || "local-user",
+        title: d.subject || d.filename?.replace(/\.pdf$/i, "") || "Study Document",
+        fileName: d.filename || "document.pdf",
+        fileSize: 1024 * 1024,
+        uploadedAt: d.uploaded_at || new Date().toISOString(),
+        status: "ready",
+        level: "intermediate",
+        language: "english",
+        processingSteps: PROCESSING_STEPS.map((s) => ({
+          step: s.step,
+          label: s.label,
+          percent: 100,
+          done: true,
+        })),
+      }));
+      setDocuments(docs);
     } catch {
-      // Silently stay with current local list
+      // Silently keep current documents list
     }
   }, []);
 
   const fetchStudyNote = useCallback(async (docId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/documents/${docId}/notes`);
+      const res = await fetch(`${API_BASE}/study/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doc_id: docId }),
+      });
       if (!res.ok) throw new Error("Notes not available");
       const data = await res.json();
-      setStudyNote(data.data ?? data);
+      const mapped = mapBackendNotesToFrontend(data, docId);
+      setStudyNote(mapped);
     } catch {
       setStudyNote(null);
     }
   }, []);
 
-  const fetchQuiz = useCallback(async (docId: string) => {
+  const fetchQuiz = useCallback(async (docId: string, settings?: QuizSettings) => {
     try {
-      const res = await fetch(`${API_BASE}/api/documents/${docId}/quiz`);
+      const res = await fetch(`${API_BASE}/quiz`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          doc_id: docId,
+          quiz_type: settings?.type || "mcq",
+          difficulty: settings?.difficulty || "medium",
+          num_questions: settings?.numberOfQuestions || 5,
+        }),
+      });
       if (!res.ok) throw new Error("Quiz not available");
       const data = await res.json();
-      setQuiz(data.data ?? data);
+      const mapped: Quiz = {
+        id: `quiz-${docId}`,
+        documentId: docId,
+        title: "Adaptive Quiz",
+        questions: (data.questions || []).map((q: any, index: number) => ({
+          id: `q-${index}`,
+          type: q.quiz_type || "mcq",
+          question: q.question || "",
+          options: (q.options || []).map((opt: any) => ({
+            id: opt.key || "",
+            text: opt.text || "",
+            isCorrect: opt.key === q.correct_answer,
+          })),
+          correctAnswer: q.options?.find((o: any) => o.key === q.correct_answer)?.text || q.correct_answer,
+          explanation: q.explanation || "",
+          difficulty: q.difficulty || "medium",
+          topic: q.topic || "General",
+          pointValue: 10,
+        })),
+        settings: {
+          type: data.quiz_type || "mcq",
+          difficulty: data.difficulty || "medium",
+          numberOfQuestions: data.questions?.length || 5,
+        },
+        createdAt: new Date().toISOString(),
+      };
+      setQuiz(mapped);
+      return mapped;
     } catch {
       setQuiz(null);
+      return null;
     }
   }, []);
 
   const fetchFlashcardDeck = useCallback(async (docId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/documents/${docId}/flashcards`);
+      const res = await fetch(`${API_BASE}/flashcards`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          doc_id: docId,
+          num_cards: 8,
+        }),
+      });
       if (!res.ok) throw new Error("Flashcards not available");
       const data = await res.json();
-      setFlashcardDeck(data.data ?? data);
+      const cards: Flashcard[] = (data.flashcards || []).map((c: any, index: number) => ({
+        id: `c-${index}`,
+        documentId: docId,
+        front: c.question || "",
+        back: c.answer || "",
+        topic: c.topic || "General",
+        status: "new" as FlashcardStatus,
+        reviewCount: 0,
+        difficulty: c.difficulty || "medium",
+      }));
+      const mapped: FlashcardDeck = {
+        id: `deck-${docId}`,
+        documentId: docId,
+        title: "Adaptive Flashcards",
+        cards,
+        createdAt: new Date().toISOString(),
+        masteredCount: 0,
+        reviewingCount: 0,
+        newCount: cards.length,
+      };
+      setFlashcardDeck(mapped);
     } catch {
       setFlashcardDeck(null);
     }
@@ -257,10 +425,49 @@ export function useDocument(): UseDocumentReturn {
 
   const fetchRevisionSheet = useCallback(async (docId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/documents/${docId}/revision`);
-      if (!res.ok) throw new Error("Revision sheet not available");
-      const data = await res.json();
-      setRevisionSheet(data.data ?? data);
+      const types = ["formula_sheet", "cheat_sheet", "mind_map", "summary", "exam_notes"];
+      const promises = types.map(type =>
+        fetch(`${API_BASE}/revision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            doc_id: docId,
+            revision_type: type,
+          }),
+        }).then(res => res.json())
+      );
+
+      const [formulaRes, cheatRes, mindRes, summaryRes, examRes] = await Promise.all(promises);
+
+      const formulas: FormulaEntry[] = [];
+      (formulaRes.sections || []).forEach((sec: any, idx: number) => {
+        const parts = sec.content?.split(":") || [];
+        const name = sec.heading || parts[0]?.trim() || `Formula ${idx + 1}`;
+        const formula = parts[1]?.split("-")[0]?.trim() || sec.content || "";
+        const description = parts[1]?.split("-")[1]?.trim() || "Mathematical relationship.";
+        formulas.push({ name, formula, description });
+      });
+
+      if (formulas.length === 0) {
+        formulas.push({
+          name: "Reference Formula",
+          formula: "y = f(x)",
+          description: "General conceptual mapping parsed from text."
+        });
+      }
+
+      const mapped: RevisionSheet = {
+        id: `rev-${docId}`,
+        documentId: docId,
+        title: summaryRes.title || "Revision Suite",
+        formulaSheet: formulas,
+        cheatSheet: cheatRes.content || "",
+        mindMap: mindRes.content || "",
+        summary: summaryRes.content || "",
+        examNotes: examRes.content || "",
+        generatedAt: new Date().toISOString(),
+      };
+      setRevisionSheet(mapped);
     } catch {
       setRevisionSheet(null);
     }

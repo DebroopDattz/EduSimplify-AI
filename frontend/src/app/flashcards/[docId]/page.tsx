@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useDocument } from "@/hooks/useDocument";
 import FlipCard from "@/components/flashcards/FlipCard";
 import type { Flashcard, FlashcardDeck, FlashcardStatus } from "@/types";
 
@@ -73,8 +74,26 @@ export default function FlashcardsPage() {
   const params = useParams();
   const router = useRouter();
   const docId = params.docId as string;
+  const { flashcardDeck, fetchFlashcardDeck } = useDocument();
+  const [loading, setLoading] = useState(true);
 
-  const [deck, setDeck] = useState<FlashcardDeck>(DEMO_DECK);
+  useEffect(() => {
+    setLoading(true);
+    fetchFlashcardDeck(docId).finally(() => {
+      setLoading(false);
+    });
+  }, [docId, fetchFlashcardDeck]);
+
+  const [localDeck, setLocalDeck] = useState<FlashcardDeck | null>(null);
+
+  // Sync loaded deck to local state so we can mutate card status
+  useEffect(() => {
+    if (flashcardDeck) {
+      setLocalDeck(flashcardDeck);
+    }
+  }, [flashcardDeck]);
+
+  const deck = localDeck || DEMO_DECK;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [filter, setFilter] = useState<FlashcardStatus | "all">("all");
 
@@ -98,12 +117,15 @@ export default function FlashcardsPage() {
   }, [filteredCards.length]);
 
   const handleStatusChange = useCallback((id: string, status: FlashcardStatus) => {
-    setDeck((prev) => ({
-      ...prev,
-      cards: prev.cards.map((c) =>
-        c.id === id ? { ...c, status, reviewCount: c.reviewCount + 1, lastReviewedAt: new Date().toISOString() } : c
-      ),
-    }));
+    setLocalDeck((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        cards: prev.cards.map((c) =>
+          c.id === id ? { ...c, status, reviewCount: c.reviewCount + 1, lastReviewedAt: new Date().toISOString() } : c
+        ),
+      };
+    });
     // Move to next card after a short delay
     setTimeout(() => {
       setCurrentIndex((i) => {
@@ -168,107 +190,124 @@ export default function FlashcardsPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 space-y-6">
-        {/* Stats */}
-        <StatsBar cards={deck.cards} />
-
-        {/* Filter tabs */}
-        <div className="flex gap-1 rounded-2xl border border-gray-200 bg-gray-50 p-1">
-          {([
-            { value: "all", label: "All Cards", count: deck.cards.length },
-            { value: "new", label: "New", count: deck.cards.filter((c) => c.status === "new").length },
-            { value: "reviewing", label: "Reviewing", count: deck.cards.filter((c) => c.status === "reviewing").length },
-            { value: "mastered", label: "Mastered", count: deck.cards.filter((c) => c.status === "mastered").length },
-          ] as const).map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => { setFilter(tab.value); setCurrentIndex(0); }}
-              className={[
-                "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all",
-                filter === tab.value
-                  ? "bg-white text-indigo-700 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700",
-              ].join(" ")}
-            >
-              {tab.label}
-              <span className={`rounded-full px-1.5 text-xs ${filter === tab.value ? "bg-indigo-100 text-indigo-600" : "bg-gray-200 text-gray-500"}`}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Card display */}
-        {filteredCards.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center text-gray-400">
-            <span className="text-4xl">🃏</span>
-            <p className="text-sm">No cards in this category.</p>
-          </div>
-        ) : currentCard ? (
-          <AnimatePresence mode="wait">
+        {loading ? (
+          <div className="flex h-64 flex-col items-center justify-center gap-3">
             <motion.div
-              key={currentCard.id}
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -40 }}
-              transition={{ duration: 0.25 }}
-            >
-              <FlipCard card={currentCard} onStatusChange={handleStatusChange} />
-            </motion.div>
-          </AnimatePresence>
-        ) : null}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="h-10 w-10 rounded-full border-4 border-indigo-200 border-t-indigo-600"
+            />
+            <p className="text-sm font-semibold text-gray-500">Generating flashcards from document...</p>
+          </div>
+        ) : (
+          <>
+            {/* Stats */}
+            <StatsBar cards={deck.cards} />
 
-        {/* Navigation */}
-        {filteredCards.length > 0 && (
-          <div className="flex items-center justify-between gap-4">
-            <motion.button
-              type="button"
-              onClick={() => setCurrentIndex((i) => Math.max(i - 1, 0))}
-              disabled={safeIndex === 0}
-              whileHover={safeIndex > 0 ? { scale: 1.06 } : {}}
-              whileTap={safeIndex > 0 ? { scale: 0.94 } : {}}
-              className="flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 shadow-sm transition-all hover:border-indigo-300 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Prev
-            </motion.button>
-
-            {/* Progress dots */}
-            <div className="flex items-center gap-1.5 overflow-hidden max-w-xs">
-              {filteredCards.slice(0, 12).map((c, i) => (
+            {/* Filter tabs */}
+            <div className="flex gap-1 rounded-2xl border border-gray-200 bg-gray-50 p-1">
+              {([
+                { value: "all", label: "All Cards", count: deck.cards.length },
+                { value: "new", label: "New", count: deck.cards.filter((c) => c.status === "new").length },
+                { value: "reviewing", label: "Reviewing", count: deck.cards.filter((c) => c.status === "reviewing").length },
+                { value: "mastered", label: "Mastered", count: deck.cards.filter((c) => c.status === "mastered").length },
+              ] as const).map((tab) => (
                 <button
-                  key={c.id}
+                  key={tab.value}
                   type="button"
-                  onClick={() => setCurrentIndex(i)}
+                  onClick={() => { setFilter(tab.value); setCurrentIndex(0); }}
                   className={[
-                    "h-2 rounded-full transition-all duration-300",
-                    i === safeIndex ? "w-6 bg-indigo-600" : "w-2 bg-gray-300 hover:bg-gray-400",
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition-all",
+                    filter === tab.value
+                      ? "bg-white text-indigo-700 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700",
                   ].join(" ")}
-                />
+                >
+                  {tab.label}
+                  <span className={`rounded-full px-1.5 text-xs ${filter === tab.value ? "bg-indigo-100 text-indigo-600" : "bg-gray-200 text-gray-500"}`}>
+                    {tab.count}
+                  </span>
+                </button>
               ))}
-              {filteredCards.length > 12 && (
-                <span className="text-xs text-gray-400">+{filteredCards.length - 12}</span>
-              )}
             </div>
 
-            <motion.button
-              type="button"
-              onClick={() => setCurrentIndex((i) => Math.min(i + 1, filteredCards.length - 1))}
-              disabled={safeIndex === filteredCards.length - 1}
-              whileHover={safeIndex < filteredCards.length - 1 ? { scale: 1.06 } : {}}
-              whileTap={safeIndex < filteredCards.length - 1 ? { scale: 0.94 } : {}}
-              className="flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 shadow-sm transition-all hover:border-indigo-300 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Next
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </motion.button>
-          </div>
-        )}
+            {/* Card display */}
+            {filteredCards.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-16 text-center text-gray-400">
+                <span className="text-4xl">🃏</span>
+                <p className="text-sm">No cards in this category.</p>
+              </div>
+            ) : currentCard ? (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentCard.id}
+                  initial={{ opacity: 0, x: 40 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -40 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <FlipCard card={currentCard} onStatusChange={handleStatusChange} />
+                </motion.div>
+              </AnimatePresence>
+            ) : null}
 
+            {/* Navigation */}
+            {filteredCards.length > 0 && (
+              <div className="flex items-center justify-between gap-4">
+                <motion.button
+                  type="button"
+                  onClick={() => setCurrentIndex((i) => Math.max(i - 1, 0))}
+                  disabled={safeIndex === 0}
+                  whileHover={safeIndex > 0 ? { scale: 1.06 } : {}}
+                  whileTap={safeIndex > 0 ? { scale: 0.94 } : {}}
+                  className="flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 shadow-sm transition-all hover:border-indigo-300 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Prev
+                </motion.button>
+
+                {/* Progress dots */}
+                <div className="flex items-center gap-1.5 overflow-hidden max-w-xs">
+                  {filteredCards.slice(0, 12).map((c, i) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setCurrentIndex(i)}
+                      className={[
+                        "h-2 rounded-full transition-all duration-300",
+                        i === safeIndex ? "w-6 bg-indigo-600" : "w-2 bg-gray-300 hover:bg-gray-400",
+                      ].join(" ")}
+                    />
+                  ))}
+                  {filteredCards.length > 12 && (
+                    <span className="text-xs text-gray-400">+{filteredCards.length - 12}</span>
+                  )}
+                </div>
+
+                <motion.button
+                  type="button"
+                  onClick={() => setCurrentIndex((i) => Math.min(i + 1, filteredCards.length - 1))}
+                  disabled={safeIndex === filteredCards.length - 1}
+                  whileHover={safeIndex < filteredCards.length - 1 ? { scale: 1.06 } : {}}
+                  whileTap={safeIndex < filteredCards.length - 1 ? { scale: 0.94 } : {}}
+                  className="flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 shadow-sm transition-all hover:border-indigo-300 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </motion.button>
+              </div>
+            )}
+
+            {/* Keyboard tip */}
+            <p className="text-center text-xs text-gray-400">
+              ← → arrow keys to navigate · Space / Enter to flip · Click ✅ or 🔄 after revealing
+            </p>
+          </>
+        )}
         {/* Keyboard tip */}
         <p className="text-center text-xs text-gray-400">
           ← → arrow keys to navigate · Space / Enter to flip · Click ✅ or 🔄 after revealing

@@ -90,7 +90,11 @@ class WatsonxService:
         Generate text synchronously using Meta Llama 3 70B Instruct.
         Falls back to local mock completion if credentials are empty or the call fails.
         """
-        if not self._settings.watsonx_api_key or self._settings.watsonx_api_key == "change-me-in-production":
+        if (
+            not self._settings.watsonx_api_key
+            or self._settings.watsonx_api_key in ("change-me-in-production", "your_watsonx_api_key_here")
+            or self._settings.watsonx_api_key.startswith("your_")
+        ):
             logger.warning("No WatsonX API Key configured. Returning offline mock AI completion.")
             return self._get_mock_completion(prompt)
 
@@ -134,7 +138,11 @@ class WatsonxService:
         Stream generated tokens asynchronously.
         Falls back to offline mock streaming if credentials are empty or the call fails.
         """
-        if not self._settings.watsonx_api_key or self._settings.watsonx_api_key == "change-me-in-production":
+        if (
+            not self._settings.watsonx_api_key
+            or self._settings.watsonx_api_key in ("change-me-in-production", "your_watsonx_api_key_here")
+            or self._settings.watsonx_api_key.startswith("your_")
+        ):
             logger.warning("No WatsonX API Key configured. Streaming offline mock AI completion.")
             mock_text = self._get_mock_completion(prompt)
             for i in range(0, len(mock_text), 8):
@@ -179,7 +187,11 @@ class WatsonxService:
         Falls back to zero-memory dense vectors directly if IBM services fail or are missing.
         """
         try:
-            if not self._settings.watsonx_api_key or self._settings.watsonx_api_key == "change-me-in-production":
+            if (
+                not self._settings.watsonx_api_key
+                or self._settings.watsonx_api_key in ("change-me-in-production", "your_watsonx_api_key_here")
+                or self._settings.watsonx_api_key.startswith("your_")
+            ):
                 raise ValueError("No watsonx API Key")
             return self._get_ibm_embeddings(texts)
         except Exception as exc:

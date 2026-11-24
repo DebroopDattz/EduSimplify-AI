@@ -91,3 +91,17 @@ RuntimeError: watsonx.ai client init failed: Attempt of authenticating connectio
 2026-07-13 21:22:27.420 | INFO     | app.services.rag_service:__init__:48 - RAGService initialised – ChromaDB at './chroma_db'.
 2026-07-13 21:22:27.420 | INFO     | main:lifespan:70 - Service stubs registered — connections will be established on first use.
 2026-07-13 21:33:52.425 | INFO     | main:lifespan:74 - EduSimplify AI backend shutting down …
+2026-07-14 14:03:19.519 | INFO     | main:create_app:154 - All routers mounted successfully.
+2026-07-14 14:03:19.521 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-14 14:03:19.521 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-14 14:03:21.014 | INFO     | app.services.cloudant_service:__init__:45 - CloudantService created in lazy mode — will connect on first use.
+2026-07-14 14:03:21.014 | INFO     | app.services.watsonx_service:__init__:66 - WatsonxService created in lazy mode — will connect on first use.
+2026-07-14 14:03:21.282 | INFO     | app.services.rag_service:__init__:48 - RAGService initialised – ChromaDB at './chroma_db'.
+2026-07-14 14:03:21.282 | INFO     | main:lifespan:70 - Service stubs registered — connections will be established on first use.
+2026-07-14 14:37:23.524 | INFO     | main:create_app:154 - All routers mounted successfully.
+2026-07-14 14:37:23.525 | INFO     | main:lifespan:56 - EduSimplify AI backend starting up …
+2026-07-14 14:37:23.526 | INFO     | main:lifespan:57 - Environment: WatsonX URL = https://us-south.ml.cloud.ibm.com
+2026-07-14 14:37:24.643 | INFO     | app.services.cloudant_service:__init__:26 - Using local file-based database at './local_db.json' (IBM Cloudant bypassed).
+2026-07-14 14:37:24.645 | INFO     | app.services.watsonx_service:__init__:66 - WatsonxService created in lazy mode — will connect on first use.
+2026-07-14 14:37:24.884 | INFO     | app.services.rag_service:__init__:48 - RAGService initialised – ChromaDB at './chroma_db'.
+2026-07-14 14:37:24.884 | INFO     | main:lifespan:70 - Service stubs registered — connections will be established on first use.
